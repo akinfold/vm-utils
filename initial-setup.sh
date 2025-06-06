@@ -19,6 +19,12 @@ echo "Root password changed."
 
 
 # 
+# Enable UFW
+# 
+ufw allow ssh
+ufw --force enable
+
+# 
 # Change SSH port
 # Sources:
 #   * https://serverfault.com/questions/1159599/how-to-change-the-ssh-server-port-on-ubuntu
@@ -71,6 +77,16 @@ systemctl restart ssh.service
 
 echo "SSH port has been changed to $NEW_SSH_PORT. Verify by running: systemctl status ssh.socket and systemctl status ssh.service"
 
+
+# 
+# Print final configuration
+# 
+
 echo "New root password: $NEW_ROOT_PASSWORD"
 echo "New SSH port: $NEW_SSH_PORT"
 
+#
+# Close 22 port in UFW.
+#
+echo "Now old SSH port will be denied in UFW. Connection will be lost. Reconnect to new port."
+ufw deny ssh
