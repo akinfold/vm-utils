@@ -84,7 +84,18 @@ commit_stage_done $STAGE_NAME
 # 
 # Update packages
 # 
-apt-get update
+APT_GET_UPDATE_LAST_TS=$( stat --format="%X" /var/cache/apt/pkgcache.bin )
+NOW_TS=$( date +%s )
+if [[ $(( UNIX_TIME - LAST_UPDATED )) -gt 86400 ]]; then
+    echo "Updating packages."
+    apt-get -qq update
+    STATUS=$?
+    if [ $STATUS -eq 0 ];then
+        echo "Packages updated."
+    else
+        echo "Could not update packages. Continue with old packages."
+    fi
+fi
 
 
 # 
@@ -117,11 +128,11 @@ fi
 # Enable UFW
 # 
 if ufw status | grep 'Status: inactive'; then
-    
+    # Allow 22 port before enable UFW.
     STAGE_NAME="close_22_port"
     reset_stage_status $STAGE_NAME
     ufw allow ssh
-
+    # Enable UFW.
     ufw --force enable
     STATUS=$?
     if [ $STATUS -eq 0 ];then
