@@ -124,6 +124,87 @@ if ! check_stage_done $STAGE_NAME; then
 fi
 
 
+#
+# Add user and disale root login
+#
+
+NEW_USER_NAME=""
+NEW_USER_HOME_DIR=""
+NEED_ADD_USER=""
+SSHD_CONFIG="/etc/ssh/sshd_config"
+STAGE_NAME="add_new_user"
+if ! check_stage_done $STAGE_NAME; then
+    while [[ $NEED_ADD_USER != "y" ]] && [[ $NEED_ADD_USER != "n" ]]; do
+        echo -n "Create user to login instead root and disable root? [y/n] "
+        read NEED_ADD_USER
+        if [[ $NEED_ADD_USER == "y" ]]; then
+            
+            echo -p "User name: "
+            read NEW_USER_NAME
+            if [[ -z $NEW_USER_NAME ]]; then
+                echo "User name can't be empty. Let's try again."
+                continue
+            fi
+
+            echo -p "User public key (copy-paste it from your local ~/.ssh/id_rsa.pub file): "
+            read NEW_USER_PUBLIC_KEY
+            if [[ -z $NEW_USER_PUBLIC_KEY ]]; then
+                echo "User public key can't be empty. Let's try again."
+                continue
+            fi
+
+            NEW_USER_HOME_DIR="/home/$NEW_USER_NAME"
+
+            echo "We are one stap away from creating new user and disable root login via SSH."
+            echo "User name: \"$NEW_USER_NAME\"."
+            echo "User home directory: \"$NEW_USER_HOME_DIR\"."
+            echo "Public key: \"$NEW_USER_PUBLIC_KEY\"."
+            echp "Add new user \"$NEW_USER_NAME\" to sudoers."
+            echo "Disable SSH login as root."
+            echo -p "Is information above correct and we are ready to go? [y/n] "
+            read READY_TO_GO
+            if [[ $READY_TO_GO == "y" ]]; then
+
+                useradd -m -d "$NEW_USER_HOME_DIR" -s /bin/bash -G sudo $NEW_USER_NAME
+                mkdir -p "$NEW_USER_HOME_DIR/.ssh"
+                echo $NEW_USER_PUBLIC_KEY >> "$NEW_USER_HOME_DIR/.ssh/authorized_keys"
+                chown -R $NEW_USER_NAME:$NEW_USER_NAME $NEW_USER_HOME_DIR/.ssh
+                chmod 700 $NEW_USER_HOME_DIR/.ssh
+                chmod 600 $NEW_USER_HOME_DIR/.ssh/authorized_keys
+
+                if ! grep -e "^\s*PubkeyAuthentication\s\+yes" "$SSHD_CONFIG"; then 
+                    echo "PubkeyAuthentication is disabled in \"$SSHD_CONFIG\". Let's fix this!"
+                    if grep -e "^\s*PubkeyAuthentication\s" "$SSHD_CONFIG"; then 
+                        sed -i "s/^\s*PubkeyAuthentication\s.*/PubkeyAuthentication yes/" "$SSHD_CONFIG"
+                    else 
+                        echo "PubkeyAuthentication yes" >> "$SSHD_CONFIG"
+                    fi
+                    systemctl restart ssh.service
+                    echo "PubkeyAuthentication now enabled in \"$SSHD_CONFIG\" and SSHD restarted."
+                fi
+                
+                echo "Disabling SSH login as root."
+                sed -i "s/^\s*PermitRootLogin.*/PermitRootLogin no/" "$SSHD_CONFIG"
+                systemctl restart ssh.service
+                echo "SSH login as root disabled."
+
+                commit_stage_done $STAGE_NAME
+                break
+            elif [[ $READY_TO_GO == "n" ]]; then
+                echo "Oh! Sorry. Let's try it again."
+                continue
+            else
+                echo "Sorry, can't understand you. Let's try again."
+                continue
+            fi
+        elif [[ $NEED_ADD_USER == "n" ]]; then
+            break
+        else
+            echo "Sorry, can't understand you. Let's try again."
+        fi
+    done
+fi
+
 # 
 # Enable UFW
 # 
@@ -216,11 +297,22 @@ commit_stage_done $STAGE_NAME
 # 
 # Print final configuration
 # 
+echo "#######################"
+echo "# Final configuration."
+echo "#######################"
+
 if [[ -n $NEW_ROOT_PASSWORD ]]; then
     echo "New root password: $NEW_ROOT_PASSWORD"
 fi
+
 if [[ -n $NEW_SSH_PORT ]]; then
     echo "New SSH port: $NEW_SSH_PORT"
 fi
 
+if [[ -n $NEW_USER_NAME ]]; then
+    echo "New user: $NEW_USER_NAME"
+    echo "Login to SSH as \"root\" disabled."
+    echo "User \"$NEW_USER_NAME\" added to sudo group."
+    echo "User \"$NEW_USER_NAME\" has no password, use SSH key authentication. Add host configuration to your local \"~/.ssh/config\" file, see more in https://serverfault.com/questions/262626/how-to-configure-ssh-client-to-use-private-keys-automatically"
+fi
 
