@@ -135,18 +135,25 @@ SSHD_CONFIG="/etc/ssh/sshd_config"
 STAGE_NAME="add_new_user"
 if ! check_stage_done $STAGE_NAME; then
     while [[ $NEED_ADD_USER != "y" ]] && [[ $NEED_ADD_USER != "n" ]]; do
+        NEW_USER_NAME=""
+        NEW_USER_HOME_DIR=""
+        NEW_USER_PUBLIC_KEY=""
+        READY_TO_GO=""
+
         echo -n "Create user to login instead root and disable root? [y/n] "
         read NEED_ADD_USER
         if [[ $NEED_ADD_USER == "y" ]]; then
             
-            echo -p "User name: "
+            NEED_ADD_USER=""
+
+            echo -n "User name: "
             read NEW_USER_NAME
             if [[ -z $NEW_USER_NAME ]]; then
                 echo "User name can't be empty. Let's try again."
                 continue
             fi
 
-            echo -p "User public key (copy-paste it from your local ~/.ssh/id_rsa.pub file): "
+            echo -n "User public key (copy-paste it from your local ~/.ssh/id_rsa.pub file): "
             read NEW_USER_PUBLIC_KEY
             if [[ -z $NEW_USER_PUBLIC_KEY ]]; then
                 echo "User public key can't be empty. Let's try again."
@@ -155,17 +162,20 @@ if ! check_stage_done $STAGE_NAME; then
 
             NEW_USER_HOME_DIR="/home/$NEW_USER_NAME"
 
-            echo "We are one stap away from creating new user and disable root login via SSH."
+            echo ""
+            echo ""
+            echo "We are one step away from creating new user and disable root login via SSH."
             echo "User name: \"$NEW_USER_NAME\"."
             echo "User home directory: \"$NEW_USER_HOME_DIR\"."
             echo "Public key: \"$NEW_USER_PUBLIC_KEY\"."
-            echp "Add new user \"$NEW_USER_NAME\" to sudoers."
+            echo "Add new user \"$NEW_USER_NAME\" to sudoers."
             echo "Disable SSH login as root."
-            echo -p "Is information above correct and we are ready to go? [y/n] "
+            echo -n "Is information above correct and we are ready to go? [y/n] "
             read READY_TO_GO
             if [[ $READY_TO_GO == "y" ]]; then
 
                 useradd -m -d "$NEW_USER_HOME_DIR" -s /bin/bash -G sudo $NEW_USER_NAME
+                echo "$NEW_USER_NAME ALL=(ALL:ALL) NOPASSWD: ALL" > "/etc/sudoers.d/$NEW_USER_NAME" && sudo chmod 440 "/etc/sudoers.d/$NEW_USER_NAME"
                 mkdir -p "$NEW_USER_HOME_DIR/.ssh"
                 echo $NEW_USER_PUBLIC_KEY >> "$NEW_USER_HOME_DIR/.ssh/authorized_keys"
                 chown -R $NEW_USER_NAME:$NEW_USER_NAME $NEW_USER_HOME_DIR/.ssh
@@ -205,6 +215,7 @@ if ! check_stage_done $STAGE_NAME; then
     done
 fi
 
+
 # 
 # Enable UFW
 # 
@@ -222,6 +233,8 @@ if ufw status | grep 'Status: inactive'; then
         echo "Unable to enable UFW."
         exit 1
     fi
+else
+    echo "UFW enabled. Nothing to do. Just moving forward."
 fi
 
 
