@@ -82,6 +82,41 @@ commit_stage_done $STAGE_NAME
 
 
 # 
+# Setup hostname
+# https://linuxconfig.org/setting-the-hostname-on-ubuntu-24-04
+STAGE_NAME='setup_hostname'
+NEED_SETUP_HOSTNAME=""
+NEW_HOSTNAME=""
+OLD_HOSTNAME=$( hostname )
+HOSTS_FILE="/etc/hosts"
+if ! check_stage_done $STAGE_NAME; then
+    OLD_HOSTNAME=
+    echo "Current hostname: $OLD_HOSTNAME"
+    while [[ $NEED_SETUP_HOSTNAME != "y" ]] && [[ $NEED_SETUP_HOSTNAME != "n" ]]; do
+        echo -n "Setup new hostname? [y/n] "
+        read NEED_SETUP_HOSTNAME
+        if [[ $NEED_SETUP_HOSTNAME == "y" ]]; then
+            echo -n "Enter new hostname: "
+            read NEW_HOSTNAME
+            
+            hostname $NEW_HOSTNAME
+            echo "Changing transient hostname to \"$NEW_HOSTNAME\" is done."
+            
+            hostnamectl set-hostname $NEW_HOSTNAME
+            echo "Changing static hostname to \"$NEW_HOSTNAME\" is done."
+
+            if grep -e "^\s*127.0.1.1\s" "$HOSTS_FILE"; then 
+                sed -i "s/^\s*127.0.1.1\s.*/127.0.1.1 $NEW_HOSTNAME/" "$HOSTS_FILE"
+            else 
+                echo "127.0.1.1 $NEW_HOSTNAME" >> "$HOSTS_FILE"
+            fi
+            echo "Adding new hostname to \"$HOSTS_FILE\" is done."
+        fi
+    done
+    commit_stage_done $STAGE_NAME
+fi
+
+# 
 # Update packages
 # 
 APT_GET_UPDATE_LAST_TS=$( stat --format="%X" /var/cache/apt/pkgcache.bin )
@@ -313,6 +348,10 @@ commit_stage_done $STAGE_NAME
 echo "#######################"
 echo "# Final configuration."
 echo "#######################"
+
+if [[ $NEED_SETUP_HOSTNAME == "y" ]] && [[ -n NEW_HOSTNAME ]]; then
+    echo "New hostname: $NEW_HOSTNAME"
+fi
 
 if [[ -n $NEW_ROOT_PASSWORD ]]; then
     echo "New root password: $NEW_ROOT_PASSWORD"
