@@ -1,36 +1,79 @@
 #!/bin/bash
-# Source https://docs.docker.com/engine/install/ubuntu/
 
 # Exit immediately if a pipeline returns a non-zero status.
 # https://www.gnu.org/savannah-checkouts/gnu/bash/manual/bash.html#The-Set-Builtin
 set -e 
 
-# Check docker already installed
-if docker -v; then
-    echo "Docker already installed."
-    exit 0
+. "./env.sh"
+
+#
+# Install docker if not installed
+#
+
+# Source: https://stackoverflow.com/questions/7522712/how-can-i-check-if-a-command-exists-in-a-shell-script
+if ! type docker > /dev/null 2>&1; then
+
+  # Source https://docs.docker.com/engine/install/ubuntu/
+
+  # Add Docker's official GPG key:
+  sudo apt-get update
+  sudo apt-get install ca-certificates curl
+  sudo install -m 0755 -d /etc/apt/keyrings
+  sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+  # Add the repository to Apt sources:
+  echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+    $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  sudo apt-get update
+
+  # Install latest version:
+  sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+  # Test docker installation:
+  sudo docker run hello-world
+
+  echo "Congratulations, my lord! You have now successfully installed and started Docker Engine."
+  echo "Beware! Docker and ufw use iptables in ways that make them incompatible with each other. Read more on https://docs.docker.com/engine/network/packet-filtering-firewalls/#docker-and-ufw"
+
+else
+  
+  echo "Docker already installed."
+
 fi
 
+echo ""
 
-# Add Docker's official GPG key:
-sudo apt-get update
-sudo apt-get install ca-certificates curl
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-sudo chmod a+r /etc/apt/keyrings/docker.asc
+echo "Create docker compose basic folder and file structure:"
 
-# Add the repository to Apt sources:
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt-get update
+sudo mkdir -p $DOCKER_ROOT_PATH
+echo "$DOCKER_ROOT_PATH"
 
-# Install latest version:
-sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo mkdir -p $DOCKER_LOGS_PATH
+echo "$DOCKER_LOGS_PATH"
 
-# Test docker installation:
-sudo docker run hello-world
+sudo mkdir -p $DOCKER_APPDATA_PATH
+echo "$DOCKER_APPDATA_PATH"
 
-echo "Congratulations, my lord! You have now successfully installed and started Docker Engine."
-echo "Beware! Docker and ufw use iptables in ways that make them incompatible with each other. Read more on https://docs.docker.com/engine/network/packet-filtering-firewalls/#docker-and-ufw"
+sudo mkdir -p $DOCKER_COMPOSE_PATH
+echo "$DOCKER_COMPOSE_PATH"
+
+sudo mkdir -p $DOCKER_SECRETS_PATH
+echo "$DOCKER_SECRETS_PATH"
+
+sudo mkdir -p $DOCKER_SHARED_PATH
+echo "$DOCKER_SHARED_PATH"
+
+if [[ ! -f $DOCKER_ENV_FILE ]]; then
+  touch "$DOCKER_ENV_FILE"
+  sudo chown root:root "$DOCKER_ENV_FILE"
+  sudo chmod 600 "$DOCKER_ENV_FILE"
+  echo "$DOCKER_ENV_FILE"
+fi
+
+if [[ ! -f $DOCKER_COMPOSE_MASTER_FILE ]]; then
+  touch "$DOCKER_COMPOSE_MASTER_FILE"
+  echo "$DOCKER_COMPOSE_MASTER_FILE"
+fi
