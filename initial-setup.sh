@@ -36,7 +36,7 @@ function commit_stage_status {
         fi
         sed -i "/^$1=.*/d" $STATUS_FILE
         if [[ -n $2 ]]; then
-            echo "$1=$2" >> $STATUS_FILE
+            echo "$1=$2  # $(date +'%Y-%m-%dT%H:%M:%S%z')" >> $STATUS_FILE
         fi
     else
         echo "Usage: commit_stage_status STAGE_NAME STATUS"
@@ -73,7 +73,7 @@ function reset_stage_status {
 
 function read_stage_status {
     if [ $# -eq 1 ]; then
-        echo "$( cat $STATUS_FILE | grep $1 | tail -n1 | cut -d "=" -f 2 | sed -e 's/^"//' -e 's/"$//' -e 's/^\s*//' -e 's/\s*$//' )"
+        echo "$( cat $STATUS_FILE | grep $1 | tail -n1 | cut -d "=" -f 2 | sed -e 's:#.*$::g' -e 's/^"//' -e 's/"$//' -e 's/^\s*//' -e 's/\s*$//' )"
     else
         echo "Usage: read_stage_status STAGE_NAME"
         exit 1
@@ -180,14 +180,14 @@ fi
 
 
 #
-# Add user and disable root login
+# Add ssh and sudo user and disable root login
 #
 
 NEW_USER_NAME=""
 NEW_USER_HOME_DIR=""
 NEED_ADD_USER=""
 SSHD_CONFIG="/etc/ssh/sshd_config"
-STAGE_NAME="add_new_user"
+STAGE_NAME="add_new_ssh_user"
 if ! check_stage_done $STAGE_NAME; then
     while [[ $NEED_ADD_USER != "y" ]] && [[ $NEED_ADD_USER != "n" ]]; do
         NEW_USER_NAME=""
@@ -270,6 +270,15 @@ if ! check_stage_done $STAGE_NAME; then
     done
 fi
 
+
+#
+# Add user to run docker containers and other staff.
+#
+STAGE_NAME="add_project_user"
+if ! check_stage_done $STAGE_NAME; then
+    useradd -m -d "/home/$PROJECT_USER_NAME" -s /bin/bash $PROJECT_USER_NAME
+    commit_stage_done $STAGE_NAME
+fi
 
 # 
 # Enable UFW
