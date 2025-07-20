@@ -8,10 +8,22 @@ if [[ $(id -u) -ne 0 ]]; then
     exit 1
 fi
 
+. "./env.sh"
+
 #
-# Check or create stages status file
+# Create initial folder structure if soesnt exists.
+# All variables are set in "./env.sh" file.
+#
+mkdir -p "$LOGS_PATH"
+mkdir -p "$ROOT_PATH"
+mkdir -p "$SECRETS_PATH"
+chown root:root "$SECRETS_PATH"
+chmod 600 "$SECRETS_PATH"
+
+#
+# Check or create stages status file.
 # 
-STATUS_FILE="$HOME/.vm-utils-initial-setup-stages"
+STATUS_FILE="$ROOT_PATH/.vm-utils-initial-setup-stages"
 STATUS_DONE="done"
 STATUS_FAILED="failed"
 
