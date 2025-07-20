@@ -44,11 +44,20 @@ else
 
 fi
 
+#
+# Create basic folder structure for docker
+# Source: https://www.simplehomelab.com/udms-14-docker-media-server
+#
+echo ""
+echo "Create docker compose basic folder and file structure:"
 echo ""
 
-echo "Create docker compose basic folder and file structure:"
-
 sudo mkdir -p $DOCKER_ROOT_PATH
+sudo chmod 775 $DOCKER_ROOT_PATH
+sudo setfacl -Rdm u:$PROJECT_USER_NAME:rwx $DOCKER_ROOT_PATH
+sudo setfacl -Rm u:$PROJECT_USER_NAME:rwx $DOCKER_ROOT_PATH
+sudo setfacl -Rdm g:docker:rwx $DOCKER_ROOT_PATH
+sudo setfacl -Rm g:docker:rwx $DOCKER_ROOT_PATH
 echo "$DOCKER_ROOT_PATH"
 
 sudo mkdir -p $DOCKER_LOGS_PATH
@@ -68,6 +77,13 @@ echo "$DOCKER_SHARED_PATH"
 
 if [[ ! -f $DOCKER_ENV_FILE ]]; then
   touch "$DOCKER_ENV_FILE"
+
+  echo "PUID=$( id -u $PROJECT_USER_NAME )" >> $DOCKER_ENV_FILE
+  echo "PGID=$( id -g $PROJECT_USER_NAME )" >> $DOCKER_ENV_FILE
+  echo "TZ=\"Europe/Moscow\"" >> $DOCKER_ENV_FILE
+  echo "USERDIR=\"/home/$PROJECT_USER_NAME\"" >> $DOCKER_ENV_FILE
+  echo "DOCKERDIR=\"$DOCKER_ROOT_PATH\"" >> $DOCKER_ENV_FILE
+
   sudo chown root:root "$DOCKER_ENV_FILE"
   sudo chmod 600 "$DOCKER_ENV_FILE"
   echo "$DOCKER_ENV_FILE"
