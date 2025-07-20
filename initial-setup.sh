@@ -145,6 +145,14 @@ if [[ $(( UNIX_TIME - LAST_UPDATED )) -gt 86400 ]]; then
 fi
 
 
+#
+# Install ACL
+#
+if [ $(dpkg -l | grep ' acl ' | wc -l) -lt 1 ]; then 
+    sudo apt install acl
+fi
+
+
 # 
 # Change root password
 # 
@@ -172,7 +180,7 @@ fi
 
 
 #
-# Add user and disale root login
+# Add user and disable root login
 #
 
 NEW_USER_NAME=""
