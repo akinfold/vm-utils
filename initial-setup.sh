@@ -194,9 +194,9 @@ fi
 #
 # Add ssh and sudo user and disable root login
 #
-
 NEW_USER_NAME=""
 NEW_USER_HOME_DIR=""
+NEW_USER_BASIC_AUTH_PASSWORD=""
 NEED_ADD_USER=""
 SSHD_CONFIG="/etc/ssh/sshd_config"
 STAGE_NAME="add_new_ssh_user"
@@ -220,6 +220,13 @@ if ! check_stage_done $STAGE_NAME; then
                 continue
             fi
 
+            echo -n "Basic auth password (min 8 symbols): "
+            read NEW_USER_BASIC_AUTH_PASSWORD
+            if [[ $NEW_USER_BASIC_AUTH_PASSWORD -lt 8 ]]; then
+                echo "Basic auth password must be at least 8 symbols long. Let's try again."
+                continue
+            fi
+
             echo -n "User public key (copy-paste it from your local ~/.ssh/id_rsa.pub file): "
             read NEW_USER_PUBLIC_KEY
             if [[ -z $NEW_USER_PUBLIC_KEY ]]; then
@@ -233,6 +240,7 @@ if ! check_stage_done $STAGE_NAME; then
             echo ""
             echo "We are one step away from creating new user and disable root login via SSH."
             echo "User name: \"$NEW_USER_NAME\"."
+            echo "User basic auth password: \"$NEW_USER_BASIC_AUTH_PASSWORD\"."
             echo "User home directory: \"$NEW_USER_HOME_DIR\"."
             echo "Public key: \"$NEW_USER_PUBLIC_KEY\"."
             echo "Add new user \"$NEW_USER_NAME\" to sudoers."
@@ -264,6 +272,9 @@ if ! check_stage_done $STAGE_NAME; then
                 sed -i "s/^\s*PermitRootLogin.*/PermitRootLogin no/" "$SSHD_CONFIG"
                 systemctl restart ssh.service
                 echo "SSH login as root disabled."
+
+                echo "Add hashed password for \"$NEW_USER_NAME:$NEW_USER_BASIC_AUTH_PASSWORD\" to $BASIC_AUTH_CREDENTIALS_FILE."
+                sudo htpasswd -cBb $BASIC_AUTH_CREDENTIALS_FILE $NEW_USER_NAME $NEW_USER_BASIC_AUTH_PASSWORD
 
                 commit_stage_done $STAGE_NAME
                 break
@@ -404,6 +415,7 @@ fi
 
 if [[ -n $NEW_USER_NAME ]]; then
     echo "New user: $NEW_USER_NAME"
+    echo "New user basic auth password: $NEW_USER_BASIC_AUTH_PASSWORD"
     echo "Login to SSH as \"root\" disabled."
     echo "User \"$NEW_USER_NAME\" added to sudo group."
     echo "User \"$NEW_USER_NAME\" has no password, use SSH key authentication. Add host configuration to your local \"~/.ssh/config\" file, see more in https://serverfault.com/questions/262626/how-to-configure-ssh-client-to-use-private-keys-automatically"

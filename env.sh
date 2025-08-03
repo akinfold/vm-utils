@@ -14,6 +14,7 @@ ROOT_PATH="/etc/$PROJECT_NAME"
 
 # To store credentials used by apps securely. Notice that the folder is owned by root and permissions are set to 600
 SECRETS_PATH="$ROOT_PATH/secrets"
+BASIC_AUTH_CREDENTIALS_FILE="$SECRETS_PATH/basic_auth_credentials.htpasswd"
 
 
 #
