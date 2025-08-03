@@ -146,11 +146,23 @@ fi
 
 
 #
-# Install ACL
+# Install basic packages.
 #
-if [ $(dpkg -l | grep ' acl ' | wc -l) -lt 1 ]; then 
-    sudo apt install acl
-fi
+declare -a packages=(
+    "acl"                   # Utilities for managing Access Control Lists for files and directories.
+    "apache2-utils"         # Utility programs for the Apache HTTP Server.
+    "argon2"                # High-performance password hashing function.
+    "ufw"                   # Uncomplicated Firewall, a user-friendly frontend for iptables.
+)
+
+for p in "${packages[@]}"; do
+
+    if [ $(dpkg -l | grep " $p " | wc -l) -lt 1 ]; then 
+        echo "Installing $p."
+        sudo apt -y install $p
+    fi
+
+done
 
 
 # 
