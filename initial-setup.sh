@@ -275,6 +275,7 @@ if ! check_stage_done $STAGE_NAME; then
 
                 echo "Add hashed password for \"$NEW_USER_NAME:$NEW_USER_BASIC_AUTH_PASSWORD\" to $BASIC_AUTH_CREDENTIALS_FILE."
                 sudo htpasswd -cBb $BASIC_AUTH_CREDENTIALS_FILE $NEW_USER_NAME $NEW_USER_BASIC_AUTH_PASSWORD
+                sudo chown root:root $BASIC_AUTH_CREDENTIALS_FILE
 
                 commit_stage_done $STAGE_NAME
                 break
