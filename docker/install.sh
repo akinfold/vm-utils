@@ -4,7 +4,7 @@
 # https://www.gnu.org/savannah-checkouts/gnu/bash/manual/bash.html#The-Set-Builtin
 set -e 
 
-. "./env.sh"
+. "../env.sh"
 
 #
 # Install docker if not installed
