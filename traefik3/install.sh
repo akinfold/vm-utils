@@ -8,7 +8,7 @@ set -e
 
 # Check docker already installed
 if ! type docker > /dev/null 2>&1; then
-    echo "Please setup docker with install_docker.sh script before run this setup."
+    echo "Please setup docker with ../docker/install.sh script before run this setup."
     exit 1
 fi
 
