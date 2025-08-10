@@ -1,0 +1,6 @@
+http:
+  middlewares:
+    middlewares-basic-auth:
+      basicAuth:
+        usersFile: "/run/secrets/basic_auth_credentials" # All secrets are loaded under /run/secrets folder inside the container.
+        realm: "Traefik Basic Auth"

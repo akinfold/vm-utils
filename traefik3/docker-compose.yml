@@ -1,0 +1,95 @@
+services:
+  # Traefik 3 - Reverse Proxy
+  # Source: https://www.simplehomelab.com/udms-18-traefik-docker-compose-guide/
+  traefik:
+    container_name: traefik
+    image: traefik:3.5
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    networks:
+      t3_proxy:
+        ipv4_address: 192.168.90.1 # Specify a static IP
+    command: # CLI arguments
+      - --global.checkNewVersion=true
+      - --global.sendAnonymousUsage=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http3=true
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      # Trefik dashboard configuration.
+      # Source: https://doc.traefik.io/traefik/operations/dashboard/
+      - --api=true
+      - --api.dashboard=true
+      # Disable SSL certificate verification when Traefik communicates with backend services.
+      - --serversTransport.insecureSkipVerify=true
+      # Allow these IPs to set the X-Forwarded-* headers - Cloudflare IPs: https://www.cloudflare.com/ips/
+      # - --entrypoints.websecure.forwardedHeaders.trustedIPs=$CLOUDFLARE_IPS,$LOCAL_IPS
+      - --log=true
+      - --log.filePath=/logs/traefik.log
+      - --log.level=DEBUG # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+      - --accessLog=true
+      - --accessLog.filePath=/logs/access.log
+      - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
+      # - --accessLog.filters.statusCodes=204-299,400-499,500-599 # Only logs responses with these status codes, filtering out routine successful requests (200-203) and redirects (300-399) to reduce log noise
+      - --providers.docker=true
+      - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
+      # - --providers.docker.endpoint=$DOCKER_HOST # Enable for Socket Proxy. Disable otherwise.
+      - --providers.docker.exposedByDefault=false
+      - --providers.docker.network=t3_proxy 
+
+      - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
+      - --providers.file.watch=true # Only works on top level files in the rules folder
+
+      - --entrypoints.websecure.http.tls=true
+      - --entrypoints.websecure.http.tls.options=tls-opts@file
+
+      - --certificatesResolvers.letsencrypt.acme.email=akinfold@gmail.com
+      - --certificatesResolvers.letsencrypt.acme.storage=/acme.json
+      - --certificatesResolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+
+      # TODO: Configure letsencypt certificate SSL.
+
+
+      # Add dns-cloudflare as default certresolver for all services. Also enables TLS and no need to specify on individual services
+      # - --entrypoints.websecure-external.http.tls.certresolver=dns-cloudflare
+      # - --entrypoints.websecure-internal.http.tls.certresolver=dns-cloudflare
+      # - --entrypoints.websecure-external.http.tls.domains[0].main=$DOMAINNAME_1
+      # - --entrypoints.websecure-external.http.tls.domains[0].sans=*.$DOMAINNAME_1
+      # - --entrypoints.websecure-internal.http.tls.domains[0].main=$DOMAINNAME_1
+      # - --entrypoints.websecure-internal.http.tls.domains[0].sans=*.$DOMAINNAME_1
+      # - DOMAINS-PLACEHOLDER-DO-NOT-DELETE      
+      #- --certificatesResolvers.dns-cloudflare.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory # LetsEncrypt Staging Server - uncomment when testing
+      # - --certificatesResolvers.dns-cloudflare.acme.storage=/acme.json
+      # - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.provider=cloudflare
+      # - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
+      # - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.propagation.delaybeforechecks=120 # To delay DNS check and reduce LE hitrate
+      #- --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.propagation.disablechecks=true # Not recommended
+      # - METRICS-PLACEHOLDER-DO-NOT-DELETE
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - $DOCKER_APPDATA_PATH/traefik3/rules:/rules 
+      - $DOCKER_APPDATA_PATH/traefik3/acme/acme.json:/acme.json 
+      - $DOCKER_LOGS_PATH/traefik3:/logs
+    environment:
+      - TZ=$TZ
+      # - HTPASSWD_FILE=/run/secrets/basic_auth_credentials # HTTP Basic Auth Credentials
+      - DOMAINNAME_1 # Passing the domain name to traefik container to be able to use the variable in rules. 
+      # - TRAEFIK_AUTH_BYPASS_KEY
+    secrets:
+      - basic_auth_credentials
+    labels:
+      - "traefik.enable=true"
+      # Configure Traefik Dashboard to be available at https://FQDN/traefik
+      # HTTP Routers
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.rule=Path(`/traefik`)"
+      # Services - API
+      - "traefik.http.routers.dashboard.service=api@internal"
+      # Middlewares
+      - "traefik.http.routers.dashboard.middlewares=middlewares-basic-auth@file" # For Basic HTTP Authentication
