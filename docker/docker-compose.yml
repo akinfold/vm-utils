@@ -1,3 +1,5 @@
+name: vmutils
+
 networks:
   default:
     driver: bridge
