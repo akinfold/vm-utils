@@ -220,10 +220,10 @@ if ! check_stage_done $STAGE_NAME; then
                 continue
             fi
 
-            echo -n "Basic auth password (min 8 symbols): "
+            echo -n "Basic auth password (min 10 symbols): "
             read NEW_USER_BASIC_AUTH_PASSWORD
-            if [[ $NEW_USER_BASIC_AUTH_PASSWORD -lt 8 ]]; then
-                echo "Basic auth password must be at least 8 symbols long. Let's try again."
+            if [[ ${#NEW_USER_BASIC_AUTH_PASSWORD} -lt 10 ]]; then
+                echo "Basic auth password must be at least 10 symbols long. Let's try again."
                 continue
             fi
 
