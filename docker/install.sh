@@ -70,31 +70,31 @@ sudo -u $PROJECT_USER_NAME mkdir -p $DOCKER_COMPOSE_PATH
 echo "$( ls -la $DOCKER_COMPOSE_PATH )"
 
 sudo mkdir -p $DOCKER_SECRETS_PATH
-echo "$( ls -la $DOCKER_SECRETS_PATH)"
+echo "$( sudo ls -la $DOCKER_SECRETS_PATH )"
 
 sudo -u $PROJECT_USER_NAME mkdir -p $DOCKER_SHARED_PATH
 echo "$( ls -la $DOCKER_SHARED_PATH )"
 
 if [[ ! -f $DOCKER_ENV_FILE ]]; then
-  touch "$DOCKER_ENV_FILE"
+  sudo touch "$DOCKER_ENV_FILE"
 
-  echo "PUID=$( id -u $PROJECT_USER_NAME )" >> $DOCKER_ENV_FILE
-  echo "PGID=$( id -g $PROJECT_USER_NAME )" >> $DOCKER_ENV_FILE
-  echo "TZ=\"Europe/Moscow\"" >> $DOCKER_ENV_FILE
-  echo "USERDIR=\"/home/$PROJECT_USER_NAME\"" >> $DOCKER_ENV_FILE
-  echo "DOCKERDIR=\"$DOCKER_ROOT_PATH\"" >> $DOCKER_ENV_FILE
-  echo "DOCKER_ROOT_PATH=\"$DOCKER_ROOT_PATH\"" >> $DOCKER_ENV_FILE
-  echo "DOCKER_APPDATA_PATH=\"$DOCKER_APPDATA_PATH\"" >> $DOCKER_ENV_FILE
-  echo "DOCKER_LOGS_PATH=\"$DOCKER_LOGS_PATH\"" >> $DOCKER_ENV_FILE
-  echo "DOCKER_SECRETS_PATH=\"$DOCKER_SECRETS_PATH\"" >> $DOCKER_ENV_FILE
-  echo "BASIC_AUTH_CREDENTIALS_FILE=\"$BASIC_AUTH_CREDENTIALS_FILE\"" >> $DOCKER_ENV_FILE
+  sudo echo "PUID=$( id -u $PROJECT_USER_NAME )" >> $DOCKER_ENV_FILE
+  sudo echo "PGID=$( id -g $PROJECT_USER_NAME )" >> $DOCKER_ENV_FILE
+  sudo echo "TZ=\"Europe/Moscow\"" >> $DOCKER_ENV_FILE
+  sudo echo "USERDIR=\"/home/$PROJECT_USER_NAME\"" >> $DOCKER_ENV_FILE
+  sudo echo "DOCKERDIR=\"$DOCKER_ROOT_PATH\"" >> $DOCKER_ENV_FILE
+  sudo echo "DOCKER_ROOT_PATH=\"$DOCKER_ROOT_PATH\"" >> $DOCKER_ENV_FILE
+  sudo echo "DOCKER_APPDATA_PATH=\"$DOCKER_APPDATA_PATH\"" >> $DOCKER_ENV_FILE
+  sudo echo "DOCKER_LOGS_PATH=\"$DOCKER_LOGS_PATH\"" >> $DOCKER_ENV_FILE
+  sudo echo "DOCKER_SECRETS_PATH=\"$DOCKER_SECRETS_PATH\"" >> $DOCKER_ENV_FILE
+  sudo echo "BASIC_AUTH_CREDENTIALS_FILE=\"$BASIC_AUTH_CREDENTIALS_FILE\"" >> $DOCKER_ENV_FILE
 
   sudo chown root:root "$DOCKER_ENV_FILE"
   sudo chmod 600 "$DOCKER_ENV_FILE"
-  echo "$( ls -la $DOCKER_ENV_FILE )"
+  echo "$( sudo ls -la $DOCKER_ENV_FILE )"
 fi
 
 if [[ ! -f $DOCKER_COMPOSE_MASTER_FILE ]]; then
-  sudosudo -u $PROJECT_USER_NAME cp "./docker-compose.yml" $DOCKER_COMPOSE_MASTER_FILE
+  sudo -u $PROJECT_USER_NAME cp "./docker-compose.yml" $DOCKER_COMPOSE_MASTER_FILE
   echo "$( ls -la $DOCKER_COMPOSE_MASTER_FILE )"
 fi
