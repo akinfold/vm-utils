@@ -9,7 +9,7 @@ services:
     restart: unless-stopped
     networks:
       t3_proxy:
-        ipv4_address: 192.168.90.1 # Specify a static IP
+        ipv4_address: 192.168.90.254 # Specify a static IP
     command: # CLI arguments
       - --global.checkNewVersion=true
       - --global.sendAnonymousUsage=false
@@ -23,10 +23,11 @@ services:
       # Source: https://doc.traefik.io/traefik/operations/dashboard/
       - --api=true
       - --api.dashboard=true
+      - --api.basePath=/traefik
+
       # Disable SSL certificate verification when Traefik communicates with backend services.
       - --serversTransport.insecureSkipVerify=true
-      # Allow these IPs to set the X-Forwarded-* headers - Cloudflare IPs: https://www.cloudflare.com/ips/
-      # - --entrypoints.websecure.forwardedHeaders.trustedIPs=$CLOUDFLARE_IPS,$LOCAL_IPS
+
       - --log=true
       - --log.filePath=/logs/traefik.log
       - --log.level=DEBUG # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
@@ -34,37 +35,37 @@ services:
       - --accessLog.filePath=/logs/access.log
       - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
       # - --accessLog.filters.statusCodes=204-299,400-499,500-599 # Only logs responses with these status codes, filtering out routine successful requests (200-203) and redirects (300-399) to reduce log noise
+
       - --providers.docker=true
       - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
-      # - --providers.docker.endpoint=$DOCKER_HOST # Enable for Socket Proxy. Disable otherwise.
       - --providers.docker.exposedByDefault=false
-      - --providers.docker.network=t3_proxy 
-
+      - --providers.docker.network=t3_proxy
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
       - --providers.file.watch=true # Only works on top level files in the rules folder
 
-      - --entrypoints.websecure.http.tls=true
-      - --entrypoints.websecure.http.tls.options=tls-opts@file
-
+      # Create letsencrypt certificate resolver
       - --certificatesResolvers.letsencrypt.acme.email=akinfold@gmail.com
       - --certificatesResolvers.letsencrypt.acme.storage=/acme.json
-      - --certificatesResolvers.letsencrypt.acme.httpChallenge.entrypoint=web
-      - --certificatesResolvers.letsencrypt.acme.httpChallenge.propagation.delaybeforechecks=120 # To delay check and reduce LE hitrate
+      - --certificatesResolvers.letsencrypt.acme.httpChallenge.entrypoint=web3
+      - --certificatesResolvers.letsencrypt.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory # LetsEncrypt Staging Server - uncomment when testing
+
+      # Apply letsencrypt certificate resolver to websecure entrypoint and specify hostname for certificate.
+      - --entrypoints.websecure.http.tls=true
+      - --entrypoints.websecure.http.tls.options=tls-opts@file
+      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
       - --entrypoints.websecure.http.tls.domains[0].main=$TRAEFIK_HOSTNAME
-      # - --certificatesResolvers.letsencrypt.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory # LetsEncrypt Staging Server - uncomment when testing
+
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - $DOCKER_APPDATA_PATH/traefik3/rules:/rules 
-      - $DOCKER_APPDATA_PATH/traefik3/acme/acme.json:/acme.json 
+      - $DOCKER_APPDATA_PATH/traefik3/rules:/rules
+      - $DOCKER_APPDATA_PATH/traefik3/acme/acme.json:/acme.json
       - $DOCKER_LOGS_PATH/traefik3:/logs
     environment:
-      - TZ=$TZ
-      # - HTPASSWD_FILE=/run/secrets/basic_auth_credentials # HTTP Basic Auth Credentials
-      - DOMAINNAME_1 # Passing the domain name to traefik container to be able to use the variable in rules. 
-      # - TRAEFIK_AUTH_BYPASS_KEY
+      - TZ
+      - TRAEFIK_HOSTNAME # Passing the domain name to traefik container to be able to use the variable in rules. 
     secrets:
       - basic_auth_credentials
     labels:
@@ -72,7 +73,7 @@ services:
       # Configure Traefik Dashboard to be available at https://FQDN/traefik
       # HTTP Routers
       - "traefik.http.routers.dashboard.entrypoints=websecure"
-      - "traefik.http.routers.dashboard.rule=Path(`/traefik`)"
+      - "traefik.http.routers.dashboard.rule=Host(`$TRAEFIK_HOSTNAME`) && PathPrefix(`/traefik`)"
       # Services - API
       - "traefik.http.routers.dashboard.service=api@internal"
       # Middlewares
