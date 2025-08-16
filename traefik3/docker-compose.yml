@@ -77,4 +77,4 @@ services:
       # Services - API
       - "traefik.http.routers.dashboard.service=api@internal"
       # Middlewares
-      - "traefik.http.routers.dashboard.middlewares=middlewares-basic-auth@file" # For Basic HTTP Authentication
+      - "traefik.http.routers.dashboard.middlewares=chain-basic-auth@file"
