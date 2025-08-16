@@ -52,28 +52,28 @@ echo ""
 echo "Create docker compose basic folder and file structure:"
 echo ""
 
-sudo mkdir -p $DOCKER_ROOT_PATH
+sudo -u $PROJECT_USER_NAMEmkdir -p $DOCKER_ROOT_PATH
 sudo chmod 775 $DOCKER_ROOT_PATH
 sudo setfacl -Rdm u:$PROJECT_USER_NAME:rwx $DOCKER_ROOT_PATH
 sudo setfacl -Rm u:$PROJECT_USER_NAME:rwx $DOCKER_ROOT_PATH
 sudo setfacl -Rdm g:docker:rwx $DOCKER_ROOT_PATH
 sudo setfacl -Rm g:docker:rwx $DOCKER_ROOT_PATH
-echo "$DOCKER_ROOT_PATH"
+echo "$( ls -la $DOCKER_ROOT_PATH )"
 
-sudo mkdir -p $DOCKER_LOGS_PATH
-echo "$DOCKER_LOGS_PATH"
+sudo -u $PROJECT_USER_NAME mkdir -p $DOCKER_LOGS_PATH
+echo "$( ls -la $DOCKER_LOGS_PATH)"
 
-sudo mkdir -p $DOCKER_APPDATA_PATH
-echo "$DOCKER_APPDATA_PATH"
+sudo -u $PROJECT_USER_NAME mkdir -p $DOCKER_APPDATA_PATH
+echo "$( ls -la $DOCKER_APPDATA_PATH )"
 
-sudo mkdir -p $DOCKER_COMPOSE_PATH
-echo "$DOCKER_COMPOSE_PATH"
+sudo -u $PROJECT_USER_NAME mkdir -p $DOCKER_COMPOSE_PATH
+echo "$( ls -la $DOCKER_COMPOSE_PATH )"
 
 sudo mkdir -p $DOCKER_SECRETS_PATH
-echo "$DOCKER_SECRETS_PATH"
+echo "$( ls -la $DOCKER_SECRETS_PATH)"
 
-sudo mkdir -p $DOCKER_SHARED_PATH
-echo "$DOCKER_SHARED_PATH"
+sudo -u $PROJECT_USER_NAME mkdir -p $DOCKER_SHARED_PATH
+echo "$( ls -la $DOCKER_SHARED_PATH )"
 
 if [[ ! -f $DOCKER_ENV_FILE ]]; then
   touch "$DOCKER_ENV_FILE"
@@ -91,10 +91,10 @@ if [[ ! -f $DOCKER_ENV_FILE ]]; then
 
   sudo chown root:root "$DOCKER_ENV_FILE"
   sudo chmod 600 "$DOCKER_ENV_FILE"
-  echo "$DOCKER_ENV_FILE"
+  echo "$( ls -la $DOCKER_ENV_FILE )"
 fi
 
 if [[ ! -f $DOCKER_COMPOSE_MASTER_FILE ]]; then
-  sudo cp "./docker-compose.yml" $DOCKER_COMPOSE_MASTER_FILE
-  echo "$DOCKER_COMPOSE_MASTER_FILE"
+  sudosudo -u $PROJECT_USER_NAME cp "./docker-compose.yml" $DOCKER_COMPOSE_MASTER_FILE
+  echo "$( ls -la $DOCKER_COMPOSE_MASTER_FILE )"
 fi
