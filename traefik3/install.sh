@@ -29,11 +29,44 @@ sudo -u $PROJECT_USER_NAME touch "$DOCKER_LOGS_PATH/traefik3/access.log"
 
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/traefik3/rules"
 # Create tls optoins configuration file referenced in docker-compose.yml
-sudo cp "./rules/tls-opts.yml" "$DOCKER_COMPOSE_PATH/traefik3/rules/tls-opts.yml"
+sudo -u $PROJECT_USER_NAME cp "./rules/tls-opts.yml" "$DOCKER_COMPOSE_PATH/traefik3/rules/tls-opts.yml"
 # Create basic authentification middleware file referenced in docker-compose.yml
-sudo cp "./rules/middlewares-basic-auth.yml" "$DOCKER_COMPOSE_PATH/traefik3/rules/middlewares-basic-auth.yml"
+sudo -u $PROJECT_USER_NAME cp "./rules/middlewares-basic-auth.yml" "$DOCKER_COMPOSE_PATH/traefik3/rules/middlewares-basic-auth.yml"
+
+# Add default host FQDN for traefik Let's Encrypt certificate.
+TRAEFIK_HOSTNAME="$( hostname )"
+TRAEFIK_NEED_SETUP_HOSTNAME=""
+TRAEFIK_NEW_HOSTNAME=""
+echo "Setup valid hostname with DNS A-record to use it as default traefik hostname for let's encrypt certificate."
+while [[ $TRAEFIK_NEED_SETUP_HOSTNAME != "y" ]] && [[ $TRAEFIK_NEED_SETUP_HOSTNAME != "n" ]]; do
+    echo "By default traefik will use hostname \"$TRAEFIK_HOSTNAME\"."
+    echo -n "Setup new hostname? [y/n] "
+    read TRAEFIK_NEED_SETUP_HOSTNAME
+    if [[ $TRAEFIK_NEED_SETUP_HOSTNAME == "y" ]]; then
+        
+        TRAEFIK_NEED_SETUP_HOSTNAME=""
+
+        echo -n "Enter new hostname: "
+        read TRAEFIK_NEW_HOSTNAME
+
+        if [[ -z $TRAEFIK_NEW_HOSTNAME ]]; then
+            echo "Hostname can't be empty. Let's try again."
+            continue
+        fi    
+
+        if [[ -z $( dig $TRAEFIK_NEW_HOSTNAME | awk '/^;; ANSWER SECTION:$/ { getline ; print $5 }' ) ]]; then 
+            echo "Hostname can't be resolved in DNS using dig command. Let's try again."
+            continue
+        fi 
+
+        $TRAEFIK_HOSTNAME = $TRAEFIK_NEW_HOSTNAME
+    fi
+
+    sudo echo "TRAEFIK_HOSTNAME=\"$TRAEFIK_HOSTNAME\"" >> $DOCKER_ENV_FILE
+    break
+done
 
 # Add traefik3 to main docker-compose.yml
-sudo mkdir -p "$DOCKER_COMPOSE_PATH/traefik3"
-sudo cp "./docker-compose.yml" "$DOCKER_COMPOSE_PATH/traefik3/docker-compose.yml"
-sudo echo "  - compose/traefik3/docker-compose.yml" >> $DOCKER_COMPOSE_MASTER_FILE
+sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_COMPOSE_PATH/traefik3"
+sudo -u $PROJECT_USER_NAME cp "./docker-compose.yml" "$DOCKER_COMPOSE_PATH/traefik3/docker-compose.yml"
+sudo -u $PROJECT_USER_NAME echo "  - compose/traefik3/docker-compose.yml" >> $DOCKER_COMPOSE_MASTER_FILE

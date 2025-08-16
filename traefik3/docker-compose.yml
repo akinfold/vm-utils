@@ -48,26 +48,10 @@ services:
 
       - --certificatesResolvers.letsencrypt.acme.email=akinfold@gmail.com
       - --certificatesResolvers.letsencrypt.acme.storage=/acme.json
-      - --certificatesResolvers.letsencrypt.acme.httpchallenge.entrypoint=web
-
-      # TODO: Configure letsencypt certificate SSL.
-
-
-      # Add dns-cloudflare as default certresolver for all services. Also enables TLS and no need to specify on individual services
-      # - --entrypoints.websecure-external.http.tls.certresolver=dns-cloudflare
-      # - --entrypoints.websecure-internal.http.tls.certresolver=dns-cloudflare
-      # - --entrypoints.websecure-external.http.tls.domains[0].main=$DOMAINNAME_1
-      # - --entrypoints.websecure-external.http.tls.domains[0].sans=*.$DOMAINNAME_1
-      # - --entrypoints.websecure-internal.http.tls.domains[0].main=$DOMAINNAME_1
-      # - --entrypoints.websecure-internal.http.tls.domains[0].sans=*.$DOMAINNAME_1
-      # - DOMAINS-PLACEHOLDER-DO-NOT-DELETE      
-      #- --certificatesResolvers.dns-cloudflare.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory # LetsEncrypt Staging Server - uncomment when testing
-      # - --certificatesResolvers.dns-cloudflare.acme.storage=/acme.json
-      # - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.provider=cloudflare
-      # - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
-      # - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.propagation.delaybeforechecks=120 # To delay DNS check and reduce LE hitrate
-      #- --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.propagation.disablechecks=true # Not recommended
-      # - METRICS-PLACEHOLDER-DO-NOT-DELETE
+      - --certificatesResolvers.letsencrypt.acme.httpChallenge.entrypoint=web
+      - --certificatesResolvers.letsencrypt.acme.httpChallenge.propagation.delaybeforechecks=120 # To delay check and reduce LE hitrate
+      - --entrypoints.websecure.http.tls.domains[0].main=$TRAEFIK_HOSTNAME
+      # - --certificatesResolvers.letsencrypt.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory # LetsEncrypt Staging Server - uncomment when testing
     ports:
       - "80:80"
       - "443:443"
