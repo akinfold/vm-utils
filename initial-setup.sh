@@ -11,16 +11,6 @@ fi
 . "./env.sh"
 
 #
-# Create initial folder structure if soesnt exists.
-# All variables are set in "./env.sh" file.
-#
-mkdir -p "$LOGS_PATH"
-mkdir -p "$ROOT_PATH"
-mkdir -p "$SECRETS_PATH"
-chown root:root "$SECRETS_PATH"
-chmod 600 "$SECRETS_PATH"
-
-#
 # Check or create stages status file.
 # 
 STATUS_FILE="$ROOT_PATH/.vm-utils-initial-setup-stages"
@@ -165,6 +155,29 @@ for p in "${packages[@]}"; do
 done
 
 
+#
+# Add user to run docker containers and other staff.
+#
+STAGE_NAME="add_project_user"
+if ! check_stage_done $STAGE_NAME; then
+    useradd -m -d "/home/$PROJECT_USER_NAME" -s /bin/bash $PROJECT_USER_NAME
+    commit_stage_done $STAGE_NAME
+fi
+
+#
+# Create initial folder structure if doesnt exists.
+# All variables are set in "./env.sh" file.
+#
+mkdir -p "$ROOT_PATH"
+chown $PROJECT_USER_NAME:$PROJECT_USER_NAME "$ROOT_PATH"
+
+sudo -u $PROJECT_USER_NAME mkdir -p "$LOGS_PATH"
+
+mkdir -p "$SECRETS_PATH"
+chown root:root "$SECRETS_PATH"
+chmod 600 "$SECRETS_PATH"
+
+
 # 
 # Change root password
 # 
@@ -294,15 +307,6 @@ if ! check_stage_done $STAGE_NAME; then
     done
 fi
 
-
-#
-# Add user to run docker containers and other staff.
-#
-STAGE_NAME="add_project_user"
-if ! check_stage_done $STAGE_NAME; then
-    useradd -m -d "/home/$PROJECT_USER_NAME" -s /bin/bash $PROJECT_USER_NAME
-    commit_stage_done $STAGE_NAME
-fi
 
 # 
 # Enable UFW
