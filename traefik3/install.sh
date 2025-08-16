@@ -29,9 +29,9 @@ sudo -u $PROJECT_USER_NAME touch "$DOCKER_LOGS_PATH/traefik3/access.log"
 
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/traefik3/rules"
 # Create tls optoins configuration file referenced in docker-compose.yml
-sudo -u $PROJECT_USER_NAME cp "./rules/tls-opts.yml" "$DOCKER_COMPOSE_PATH/traefik3/rules/tls-opts.yml"
+sudo -u $PROJECT_USER_NAME cp "./rules/tls-opts.yml" "$DOCKER_APPDATA_PATH/traefik3/rules/tls-opts.yml"
 # Create basic authentification middleware file referenced in docker-compose.yml
-sudo -u $PROJECT_USER_NAME cp "./rules/middlewares-basic-auth.yml" "$DOCKER_COMPOSE_PATH/traefik3/rules/middlewares-basic-auth.yml"
+sudo -u $PROJECT_USER_NAME cp "./rules/middlewares-basic-auth.yml" "$DOCKER_APPDATA_PATH/traefik3/rules/middlewares-basic-auth.yml"
 
 # Add default host FQDN for traefik Let's Encrypt certificate.
 TRAEFIK_HOSTNAME="$( hostname )"
@@ -62,11 +62,11 @@ while [[ $TRAEFIK_NEED_SETUP_HOSTNAME != "y" ]] && [[ $TRAEFIK_NEED_SETUP_HOSTNA
         $TRAEFIK_HOSTNAME = $TRAEFIK_NEW_HOSTNAME
     fi
 
-    sudo echo "TRAEFIK_HOSTNAME=\"$TRAEFIK_HOSTNAME\"" >> $DOCKER_ENV_FILE
+    echo "TRAEFIK_HOSTNAME=\"$TRAEFIK_HOSTNAME\"" | sudo tee -a $DOCKER_ENV_FILE
     break
 done
 
 # Add traefik3 to main docker-compose.yml
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_COMPOSE_PATH/traefik3"
 sudo -u $PROJECT_USER_NAME cp "./docker-compose.yml" "$DOCKER_COMPOSE_PATH/traefik3/docker-compose.yml"
-sudo -u $PROJECT_USER_NAME echo "  - compose/traefik3/docker-compose.yml" >> $DOCKER_COMPOSE_MASTER_FILE
+echo "  - compose/traefik3/docker-compose.yml" | sudo -u $PROJECT_USER_NAME tee -a $DOCKER_COMPOSE_MASTER_FILE
