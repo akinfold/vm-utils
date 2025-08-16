@@ -8,7 +8,35 @@ if [[ $(id -u) -ne 0 ]]; then
     exit 1
 fi
 
+# Exit immediately if a pipeline returns a non-zero status.
+# https://www.gnu.org/savannah-checkouts/gnu/bash/manual/bash.html#The-Set-Builtin
+set -e 
+
 . "./env.sh"
+
+#
+# Add user to run docker containers and other staff.
+#
+if id "$PROJECT_USER_NAME" >/dev/null 2>&1; then
+    echo "Project user "$PROJECT_USER_NAME" found."
+else
+    echo "Project user "$PROJECT_USER_NAME" not found. Create one."
+    useradd -m -d "/home/$PROJECT_USER_NAME" -s /bin/bash $PROJECT_USER_NAME
+fi
+
+#
+# Create initial folder structure if doesnt exists.
+# All variables are set in "./env.sh" file.
+#
+mkdir -p "$ROOT_PATH"
+chown $PROJECT_USER_NAME:$PROJECT_USER_NAME "$ROOT_PATH"
+
+mkdir -p "$LOGS_PATH"
+chown $PROJECT_USER_NAME:$PROJECT_USER_NAME "$LOGS_PATH"
+
+mkdir -p "$SECRETS_PATH"
+chown root:root "$SECRETS_PATH"
+chmod 600 "$SECRETS_PATH"
 
 #
 # Check or create stages status file.
@@ -121,18 +149,21 @@ fi
 # 
 # Update packages
 # 
-APT_GET_UPDATE_LAST_TS=$( stat --format="%X" /var/cache/apt/pkgcache.bin )
-NOW_TS=$( date +%s )
-if [[ $(( UNIX_TIME - LAST_UPDATED )) -gt 86400 ]]; then
-    echo "Updating packages."
-    apt-get -qq update
-    STATUS=$?
-    if [ $STATUS -eq 0 ];then
-        echo "Packages updated."
-    else
-        echo "Could not update packages. Continue with old packages."
-    fi
-fi
+# APT_GET_UPDATE_LAST_TS=$( stat --format="%X" /var/cache/apt/pkgcache.bin )
+# NOW_TS=$( date +%s )
+# UPSINCE=$( date -d "$( uptime -s )" +%s )
+# if [[ $(( NOW_TS-APT_GET_UPDATE_LAST_TS )) -gt 86400 || $(( NOW_TS-UPSINCE )) -lt 86400 ]]; then
+#     echo "Updating packages."
+#     apt-get -qq update
+#     STATUS=$?
+#     if [ $STATUS -eq 0 ];then
+#         echo "Packages updated."
+#     else
+#         echo "Could not update packages. Continue with old packages."
+#     fi
+# fi
+echo "Updating packages."
+apt-get -qq update
 
 
 #
@@ -153,29 +184,6 @@ for p in "${packages[@]}"; do
     fi
 
 done
-
-
-#
-# Add user to run docker containers and other staff.
-#
-STAGE_NAME="add_project_user"
-if ! check_stage_done $STAGE_NAME; then
-    useradd -m -d "/home/$PROJECT_USER_NAME" -s /bin/bash $PROJECT_USER_NAME
-    commit_stage_done $STAGE_NAME
-fi
-
-#
-# Create initial folder structure if doesnt exists.
-# All variables are set in "./env.sh" file.
-#
-mkdir -p "$ROOT_PATH"
-chown $PROJECT_USER_NAME:$PROJECT_USER_NAME "$ROOT_PATH"
-
-sudo -u $PROJECT_USER_NAME mkdir -p "$LOGS_PATH"
-
-mkdir -p "$SECRETS_PATH"
-chown root:root "$SECRETS_PATH"
-chmod 600 "$SECRETS_PATH"
 
 
 # 
