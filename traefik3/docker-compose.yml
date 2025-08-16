@@ -46,7 +46,7 @@ services:
       # Create letsencrypt certificate resolver
       - --certificatesResolvers.letsencrypt.acme.email=akinfold@gmail.com
       - --certificatesResolvers.letsencrypt.acme.storage=/acme.json
-      - --certificatesResolvers.letsencrypt.acme.httpChallenge.entrypoint=web3
+      - --certificatesResolvers.letsencrypt.acme.httpChallenge.entrypoint=web
       - --certificatesResolvers.letsencrypt.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory # LetsEncrypt Staging Server - uncomment when testing
 
       # Apply letsencrypt certificate resolver to websecure entrypoint and specify hostname for certificate.
