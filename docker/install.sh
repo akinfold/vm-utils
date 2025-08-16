@@ -52,7 +52,7 @@ echo ""
 echo "Create docker compose basic folder and file structure:"
 echo ""
 
-sudo -u $PROJECT_USER_NAMEmkdir -p $DOCKER_ROOT_PATH
+sudo -u $PROJECT_USER_NAME mkdir -p $DOCKER_ROOT_PATH
 sudo chmod 775 $DOCKER_ROOT_PATH
 sudo setfacl -Rdm u:$PROJECT_USER_NAME:rwx $DOCKER_ROOT_PATH
 sudo setfacl -Rm u:$PROJECT_USER_NAME:rwx $DOCKER_ROOT_PATH
