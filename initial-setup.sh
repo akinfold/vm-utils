@@ -347,7 +347,7 @@ fi
 STAGE_NAME="change_ssh_port"
 if ! check_stage_done $STAGE_NAME; then
     if systemctl status ssh.socket | grep 'Listen:' | grep -e ':22 ' -e ':2222 '; then
-        NEW_SSH_PORT=$((1024 + $RANDOM))
+        NEW_SSH_PORT=$(( random_unused_port ))
 
         echo "Opening new SSH port $NEW_SSH_PORT in UFW."
         ufw allow $NEW_SSH_PORT/tcp

@@ -48,3 +48,26 @@ DOCKER_ENV_FILE="$DOCKER_ROOT_PATH/.env"
 
 # This is our template or configuration file for all our services. We will call this file the Docker Compose Master File.
 DOCKER_COMPOSE_MASTER_FILE="$DOCKER_ROOT_PATH/docker-compose.yml"
+
+
+# Generate random port which is not in use.
+function random_unused_port {
+    while true; do
+        # Generate peseudo random new port number 
+        RANDOM_UNUSED_NEW_PORT=$(( $RANDOM + $RANDOM ))
+
+        # Check port number in range [1024, 65535].
+        if [[ $RANDOM_UNUSED_NEW_PORT -lt 1024 || $RANDOM_UNUSED_NEW_PORT -gt 65535 ]]; then 
+            continue 
+        fi
+
+        # Check port unused.
+        if $( nc -z 127.0.0.1 $RANDOM_UNUSED_NEW_PORT ); then 
+            continue
+        fi 
+
+        # If all checks passed return generated port number.
+        echo $RANDOM_UNUSED_NEW_PORT
+        break
+    done
+}
