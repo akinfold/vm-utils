@@ -9,7 +9,7 @@ services:
     restart: unless-stopped
     networks:
       t3_proxy:
-        ipv4_address: 192.168.90.254 # Specify a static IP
+        ipv4_address: 192.168.254.254 # Specify a static IP
     command: # CLI arguments
       - --global.checkNewVersion=true
       - --global.sendAnonymousUsage=false

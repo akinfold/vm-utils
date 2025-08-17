@@ -8,7 +8,14 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 192.168.90.0/24
+        - subnet: 192.168.254.0/24
+  wg:
+    name: wg
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.253.0/24
 
 secrets:
   basic_auth_credentials:
