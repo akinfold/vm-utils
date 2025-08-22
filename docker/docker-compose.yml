@@ -3,8 +3,8 @@ name: vmutils
 networks:
   default:
     driver: bridge
-  t3_proxy:
-    name: t3_proxy
+  traefik:
+    name: traefik
     driver: bridge
     ipam:
       config:
