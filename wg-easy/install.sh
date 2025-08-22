@@ -23,7 +23,7 @@ sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/wg-easy"
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/wg-easy/wireguard"
 
 
-WG_PORT=$(( random_unused_port ))
+WG_PORT=$( random_unused_port )
 sudo sed -i "/^WG_PORT=.*/d" $DOCKER_ENV_FILE
 echo "WG_PORT=\"$WG_PORT\"" | sudo tee -a $DOCKER_ENV_FILE
 
