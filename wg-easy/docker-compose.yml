@@ -1,0 +1,52 @@
+services:
+  wg-easy:
+    container_name: wg-easy
+    image: ghcr.io/wg-easy/wg-easy:15
+    security_opt:
+        - no-new-privileges:true
+    restart: unless-stopped
+    networks:
+      wg:
+        ipv4_address: 192.168.253.254
+      traefik: {}
+    ports:
+      - "$WG_PORT:51820/udp"        # UDP port used by WireGuard.
+    #   - "51821:51821/tcp"           # TCP port for accessing the web interface exposed by traefik.
+    volumes:
+      - $DOCKER_APPDATA_PATH/wg-easy/wireguard:/etc/wireguard
+    cap_add:                        # Capabilities required for managing networking features.
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:                        # Kernel parameters that need to be set for WireGuard.
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv4.ip_forward=1
+    environment:                    
+      - LANG=en                                   # Language settings.
+      - INSECURE=false                            # If access over http is allowed.
+      - DISABLE_IPV6=true                         # If IPv6 support should be disabled.
+      - PASSWORD_HASH='$BASIC_AUTH_PASSWORD_HASH' # Bcrypt hash for Web UI login.
+      # - HOST=0.0.0.0                              # IP address web UI binds to.
+      # - PORT=51821                                # Port for the web interface.
+      # - WG_HOST=<Your IP/Domain>                  # Public IP or domain name where WG-Easy is accessible.
+      # - WG_PORT=51820                             # WireGuard port for VPN traffic.
+      
+      # Source: https://wg-easy.github.io/wg-easy/latest/advanced/config/unattended-setup/
+      # If you want to run the setup without any user interaction, e.g. with a tool like Ansible, 
+      # you can use these environment variables to configure the setup.
+      # These will only be used during the first start of the container. 
+      # After that, the setup will be disabled.
+      - INIT_ENABLED=true               # Enables the below env vars.
+      - INIT_USERNAME=$BASIC_AUTH_LOGIN # Sets admin username.
+      - INIT_PASSWORD=                  # Sets admin password
+      - INIT_HOST=$TRAEFIK_HOSTNAME     # Host clients will connect to.
+      - INIT_PORT=$WG_PORT              # Port clients will connect to and wireguard will listen on.
+      - INIT_DNS=1.1.1.1,8.8.8.8        # Sets global dns setting.
+      # - INIT_IPV4_CIDR=10.8.0.0/24      # Sets IPv4 cidr.
+      # - INIT_IPV6_CIDR=2001:0DB8::/32   # Sets IPv6 cidr.
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wg-easy.rule=Host(`$TRAEFIK_HOSTNAME`) && PathPrefix(`/wg-easy`)"
+      - "traefik.http.routers.wg-easy.entrypoints=websecure"
+      - "traefik.http.routers.wg-easy.service=wg-easy"
+      - "traefik.http.services.wg-easy.loadbalancer.server.port=51821"
