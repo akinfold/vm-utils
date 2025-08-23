@@ -17,7 +17,7 @@ services:
       # - PUBLIC_IP=192.168.88.88
     networks:
       wg:
-        ipv4_address: 192.168.253.254
+        ipv4_address: 192.168.253.253
       traefik: {}
     ports:
       - $WG_PORT_RANGE:51820-51830/udp
