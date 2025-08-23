@@ -26,7 +26,8 @@ sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/wgdashboard/app_conf"
 # Create log files
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_LOGS_PATH/wgdashboard"
 
-WG_PORT_RANGE="$( random_unused_port )-$( random_unused_port )"
+WG_PORT=$( random_unused_port )
+WG_PORT_RANGE="$WG_PORT-$(( WG_PORT+10 ))"
 sudo sed -i "/^WG_PORT_RANGE=.*/d" $DOCKER_ENV_FILE
 echo "WG_PORT_RANGE=\"$WG_PORT_RANGE\"" | sudo tee -a $DOCKER_ENV_FILE
 echo ""
