@@ -42,3 +42,8 @@ echo "  - compose/wgdashboard/docker-compose.yml" | sudo -u $PROJECT_USER_NAME t
 
 # Reload vmutils docker compose project file to apply changes.
 sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d 
+
+echo ""
+echo "Open https://$TRAEFIK_HOSTNAME/wg in browser to access Wgdashboard." 
+echo "Default wgdashboard login and password is \"admin:admin\". Use them to configure wgdeshboard and change admin credentials."
+echo "Wgdashboard protected by basic authentication provided by Traefik so you will need basic auth credentials set earlier in initial_setup.sh."
