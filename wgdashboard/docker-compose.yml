@@ -13,8 +13,8 @@ services:
       - APP_PREFIX=/wg
       - TZ=$TZ
       - GLOBAL_DNS=8.8.8.8
+      - PUBLIC_IP=$TRAEFIK_HOSTNAME
       # - ENABLE=wg0,wg1,wg2
-      # - PUBLIC_IP=192.168.88.88
     networks:
       wg:
         ipv4_address: 192.168.253.253
