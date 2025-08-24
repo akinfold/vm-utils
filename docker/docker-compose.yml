@@ -15,6 +15,7 @@ networks:
     ipam:
       config:
         - subnet: 192.168.253.0/24
+        - subnet: fdcc:ad94:bacf:61a3::/64
 
 secrets:
   basic_auth_credentials:
