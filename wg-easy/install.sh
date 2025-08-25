@@ -66,4 +66,4 @@ sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d
 sudo sed -i "/^\s*\(#\s*\|\s*\)- INIT_\w\+=.\+$/d" "$DOCKER_COMPOSE_PATH/wg-easy/docker-compose.yml"
 
 # Reload vmutils docker compose project file to apply changes.
-sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d 
+sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d --remove-orphans

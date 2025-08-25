@@ -41,7 +41,7 @@ sudo -u $PROJECT_USER_NAME sed -i "/^\s*- compose\/wgdashboard\/docker-compose.y
 echo "  - compose/wgdashboard/docker-compose.yml" | sudo -u $PROJECT_USER_NAME tee -a $DOCKER_COMPOSE_MASTER_FILE
 
 # Reload vmutils docker compose project file to apply changes.
-sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d 
+sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d --remove-orphans
 
 TRAEFIK_HOSTNAME=$( sudo grep 'TRAEFIK_HOSTNAME' /etc/vmutils/docker/.env | cut -d= -f2 | sed -e 's:#.*$::g' -e 's/^"//' -e 's/"$//' )
 echo ""

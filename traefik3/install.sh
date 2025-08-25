@@ -71,7 +71,7 @@ sudo -u $PROJECT_USER_NAME sed -i "/^\s*- compose\/traefik3\/docker-compose.yml/
 echo "  - compose/traefik3/docker-compose.yml" | sudo -u $PROJECT_USER_NAME tee -a $DOCKER_COMPOSE_MASTER_FILE
 
 # Reload vmutils docker compose project file to apply changes.
-sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d 
+sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d --remove-orphans
 
 echo ""
 echo "Open https://$TRAEFIK_HOSTNAME/traefik in browser to access Traefik dashboard."
