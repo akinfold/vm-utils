@@ -52,8 +52,8 @@ sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_COMPOSE_PATH/wg-easy"
 sudo -u $PROJECT_USER_NAME cp "./docker-compose.yml" "$DOCKER_COMPOSE_PATH/wg-easy/docker-compose.yml"
 
 # Inject to wg-easy docker-compose.yml authentification credentials for unattended setup.
-sed -i "s/{{ INIT_USERNAME }}/$WG_INIT_USERNAME/" "$DOCKER_COMPOSE_PATH/wg-easy/docker-compose.yml"
-sed -i "s/{{ INIT_PASSWORD }}/$WG_INIT_PASSWORD/" "$DOCKER_COMPOSE_PATH/wg-easy/docker-compose.yml"
+sudo -u $PROJECT_USER_NAME sed -i "s/{{ INIT_USERNAME }}/$WG_INIT_USERNAME/" "$DOCKER_COMPOSE_PATH/wg-easy/docker-compose.yml"
+sudo -u $PROJECT_USER_NAME sed -i "s/{{ INIT_PASSWORD }}/$WG_INIT_PASSWORD/" "$DOCKER_COMPOSE_PATH/wg-easy/docker-compose.yml"
 
 # Add wg-easy to main docker-compose.yml
 sudo -u $PROJECT_USER_NAME sed -i "/^\s*- compose\/wg-easy\/docker-compose.yml/d" $DOCKER_COMPOSE_MASTER_FILE
@@ -63,7 +63,7 @@ echo "  - compose/wg-easy/docker-compose.yml" | sudo -u $PROJECT_USER_NAME tee -
 sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d 
 
 # Remove from wg-easy docker-compose.yml authentication credentials injected there for unattended setup and all other initial env vars.
-sudo sed -i "/^\s*\(#\s*\|\s*\)- INIT_\w\+=.\+$/d" "$DOCKER_COMPOSE_PATH/wg-easy/docker-compose.yml"
+sudo -u $PROJECT_USER_NAME sed -i "/^\s*\(#\s*\|\s*\)- INIT_\w\+=.\+$/d" "$DOCKER_COMPOSE_PATH/wg-easy/docker-compose.yml"
 
 # Reload vmutils docker compose project file to apply changes.
 sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d --remove-orphans
