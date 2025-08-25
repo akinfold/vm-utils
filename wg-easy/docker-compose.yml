@@ -8,7 +8,7 @@ services:
     networks:
       wg:
         ipv4_address: 192.168.253.254
-        ipv6_address: fdcc:ad94:bacf:61a3::2a
+#        ipv6_address: fdcc:ad94:bacf:61a3::2a
       traefik: {}
     ports:
       - "$WG_PORT:51820/udp"        # UDP port used by WireGuard.
@@ -31,7 +31,7 @@ services:
       - INSECURE=false                            # If access over http is allowed.
       # - PORT=51821                                # Port for the web interface.
       # - HOST=0.0.0.0                              # IP address web UI binds to.
-      # - DISABLE_IPV6=true                         # If IPv6 support should be disabled.
+      - DISABLE_IPV6=true                         # If IPv6 support should be disabled.
       
       # Source: https://wg-easy.github.io/wg-easy/latest/advanced/config/unattended-setup/
       # If you want to run the setup without any user interaction, e.g. with a tool like Ansible, 
