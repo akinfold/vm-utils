@@ -49,6 +49,7 @@ DOCKER_ENV_FILE="$DOCKER_ROOT_PATH/.env"
 # This is our template or configuration file for all our services. We will call this file the Docker Compose Master File.
 DOCKER_COMPOSE_MASTER_FILE="$DOCKER_ROOT_PATH/docker-compose.yml"
 
+MIN_PASSWORD_LENGTH=12
 
 # Generate random port which is not in use.
 function random_unused_port {
