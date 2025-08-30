@@ -174,6 +174,7 @@ declare -a packages=(
     "apache2-utils"         # Utility programs for the Apache HTTP Server.
     "argon2"                # High-performance password hashing function.
     "ufw"                   # Uncomplicated Firewall, a user-friendly frontend for iptables.
+    "moreutils"             # We need sponge from moreutils.
 )
 
 for p in "${packages[@]}"; do
