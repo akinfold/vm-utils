@@ -174,6 +174,7 @@ declare -a packages=(
     "apache2-utils"         # Utility programs for the Apache HTTP Server.
     "argon2"                # High-performance password hashing function.
     "ufw"                   # Uncomplicated Firewall, a user-friendly frontend for iptables.
+    "jq"                    # Lightweight and flexible command-line JSON processor. https://jqlang.org/
 )
 
 for p in "${packages[@]}"; do
@@ -184,6 +185,12 @@ for p in "${packages[@]}"; do
     fi
 
 done
+
+
+#
+# Install python packages.
+#
+pip install -r requirements.txt
 
 
 # 
