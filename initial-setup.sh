@@ -174,7 +174,6 @@ declare -a packages=(
     "apache2-utils"         # Utility programs for the Apache HTTP Server.
     "argon2"                # High-performance password hashing function.
     "ufw"                   # Uncomplicated Firewall, a user-friendly frontend for iptables.
-    "jq"                    # Lightweight and flexible command-line JSON processor. https://jqlang.org/
 )
 
 for p in "${packages[@]}"; do
@@ -186,13 +185,7 @@ for p in "${packages[@]}"; do
 
 done
 
-#
-# Install python packages.
-#
-apt-get install pipx  # Python package manager running python applications in isolated virtual environments.
-pipx install yq  # Command-line YAML processor.
-pipx ensurepath
-pipx ensurepath --global
+snap install yq  # Install yq. Command-line YAML processor. https://github.com/mikefarah/yq
 
 
 # 
