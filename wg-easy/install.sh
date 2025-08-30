@@ -61,7 +61,7 @@ sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d
 sudo -u $PROJECT_USER_NAME sed -i "/^\s*\(#\s*\|\s*\)- INIT_\w\+=.\+$/d" "$DOCKER_COMPOSE_PATH/wg-easy/docker-compose.yml"
 
 echo "Waiting 60 seconds while traefik initializing wg-easy router..."
-sllep 60
+sleep 60
 
 TRAEFIK_HOSTNAME=$( sudo grep 'TRAEFIK_HOSTNAME' /etc/vmutils/docker/.env | cut -d= -f2 | sed -e 's:#.*$::g' -e 's/^"//' -e 's/"$//' )
 echo ""
