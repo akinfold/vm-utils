@@ -36,7 +36,9 @@ TRAEFIK_NEED_SETUP_HOSTNAME=""
 TRAEFIK_NEW_HOSTNAME=""
 echo "Setup valid hostname with DNS A-record to use it as default traefik hostname for let's encrypt certificate."
 while [[ $TRAEFIK_NEED_SETUP_HOSTNAME != "y" ]] && [[ $TRAEFIK_NEED_SETUP_HOSTNAME != "n" ]]; do
+    echo ""
     echo "By default traefik will use hostname \"$TRAEFIK_HOSTNAME\"."
+    echo ""
     echo -n "Setup new hostname? [y/n] "
     read TRAEFIK_NEED_SETUP_HOSTNAME
     if [[ $TRAEFIK_NEED_SETUP_HOSTNAME == "y" ]]; then
@@ -64,9 +66,33 @@ while [[ $TRAEFIK_NEED_SETUP_HOSTNAME != "y" ]] && [[ $TRAEFIK_NEED_SETUP_HOSTNA
     break
 done
 
-# Add traefik3 to main docker-compose.yml
+# Copy traefik3 docker compose to 
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_COMPOSE_PATH/traefik3"
 sudo -u $PROJECT_USER_NAME cp "./docker-compose.yml" "$DOCKER_COMPOSE_PATH/traefik3/docker-compose.yml"
+
+# Choose Let's encrypt certificate type.
+echo ""
+echo "By default traefik configured to use Let's encrypt staging environment."
+echo "This allow you to get things right before issuing trusted certificates and reduce the chance of your running up against rate limits."
+echo "More info about staging environment: https://letsencrypt.org/docs/staging-environment/"
+echo "If you choose to continue with staging environment, you can later switch to trusted environment by running traefik3/switch-le-env.sh script."
+TRAEFIK_LE_ENVIRONMENT_SELECTION=""
+while [[ $TRAEFIK_LE_ENVIRONMENT_SELECTION != "y" ]] && [[ $TRAEFIK_LE_ENVIRONMENT_SELECTION != "n" ]]; do
+    echo ""
+    echo "Continue with staging environment? [y/n]"
+    read TRAEFIK_LE_ENVIRONMENT_SELECTION
+
+    if [[ $TRAEFIK_LE_ENVIRONMENT_SELECTION == "n" ]]; then
+        echo "Switching to Let's encrypt trusted enviroment."
+        sudo -u $PROJECT_USER_NAME sed -i "/^.*--certificatesResolvers.letsencrypt.acme.caServer=.\+$/d" "$DOCKER_COMPOSE_PATH/traefik3/docker-compose.yml"
+    elif [[ $TRAEFIK_LE_ENVIRONMENT_SELECTION == "y" ]]; then
+        echo "Continue with Let's encrypt staging enviroment."
+    else
+        echo "Please select "y" or "n". Let's try again."
+    fi
+done
+
+# Add traefik3 to main docker-compose.yml
 sudo -u $PROJECT_USER_NAME sed -i "/^\s*- compose\/traefik3\/docker-compose.yml/d" $DOCKER_COMPOSE_MASTER_FILE
 echo "  - compose/traefik3/docker-compose.yml" | sudo -u $PROJECT_USER_NAME tee -a $DOCKER_COMPOSE_MASTER_FILE
 
