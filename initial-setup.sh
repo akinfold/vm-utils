@@ -366,10 +366,11 @@ if ! check_stage_done $STAGE_NAME; then
         fi
 
         # Write the override configuration
+        # Source: https://askubuntu.com/questions/1532433/custom-ssh-port-configuration-will-listen-only-on-ipv6-of-the-system
         cat <<EOF > "$OVERRIDE_FILE"
 [Socket]
 ListenStream=
-ListenStream=$NEW_SSH_PORT
+ListenStream=0.0.0.0:$NEW_SSH_PORT
 EOF
 
         echo "SSH configuration written to $OVERRIDE_FILE"
@@ -393,6 +394,7 @@ EOF
         systemctl restart ssh.service
 
         echo "SSH port has been changed to $NEW_SSH_PORT. Verify by running: systemctl status ssh.socket and systemctl status ssh.service"
+        ss -lntu
     fi
     commit_stage_done $STAGE_NAME
 fi
