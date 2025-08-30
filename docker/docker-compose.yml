@@ -12,11 +12,11 @@ networks:
   wg:
     name: wg
     driver: bridge
-    enable_ipv6: true
+#    enable_ipv6: true
     ipam:
       config:
         - subnet: 192.168.253.0/24
-        - subnet: fdcc:ad94:bacf:61a3::/64
+#        - subnet: fdcc:ad94:bacf:61a3::/64
 
 secrets:
   basic_auth_credentials:

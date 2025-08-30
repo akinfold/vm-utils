@@ -8,7 +8,7 @@ services:
     networks:
       wg:
         ipv4_address: 192.168.253.254
-        ipv6_address: fdcc:ad94:bacf:61a3::2a
+        # ipv6_address: fdcc:ad94:bacf:61a3::2a
       traefik: {}
     ports:
       - "51820:51820/udp"           # UDP port used by WireGuard.
@@ -28,7 +28,7 @@ services:
       - TZ
       - TRAEFIK_HOSTNAME
       - INSECURE=false                            # If access over http is allowed.
-      # - DISABLE_IPV6=true                         # If IPv6 support should be disabled.
+      - DISABLE_IPV6=true                         # If IPv6 support should be disabled.
       # - PORT=51821                                # Port for the web interface.
       # - HOST=0.0.0.0                              # IP address web UI binds to.
       
