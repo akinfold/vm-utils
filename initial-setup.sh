@@ -186,11 +186,13 @@ for p in "${packages[@]}"; do
 
 done
 
-
 #
 # Install python packages.
 #
-pip install -r requirements.txt
+apt-get install pipx  # Python package manager running python applications in isolated virtual environments.
+pipx install yq  # Command-line YAML processor.
+pipx ensurepath
+pipx ensurepath --global
 
 
 # 
