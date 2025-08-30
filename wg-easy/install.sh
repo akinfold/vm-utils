@@ -28,10 +28,10 @@ while true; do
         continue
     fi
 
-    echo -n "Password (min 10 symbols): "
+    echo -n "Password (min $MIN_PASSWORD_LENGTH symbols): "
     read WG_INIT_PASSWORD
-    if [[ ${#WG_INIT_PASSWORD} -lt 10 ]]; then
-        echo "Wg-easy password must be at least 10 symbols long. Let's try again."
+    if [[ ${#WG_INIT_PASSWORD} -lt $MIN_PASSWORD_LENGTH ]]; then
+        echo "Wg-easy password must be at least $MIN_PASSWORD_LENGTH symbols long. Let's try again."
         continue
     fi
 
@@ -41,11 +41,6 @@ done
 # Folder we will use to store all wg-easy related data
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/wg-easy" 
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/wg-easy/wireguard"
-
-
-WG_PORT=$( random_unused_port )
-sudo sed -i "/^WG_PORT=.*/d" $DOCKER_ENV_FILE
-echo "WG_PORT=\"$WG_PORT\"" | sudo tee -a $DOCKER_ENV_FILE
 
 # Copy docker-compose.yml to vmutils working directory.
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_COMPOSE_PATH/wg-easy"
@@ -65,5 +60,12 @@ sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d
 # Remove from wg-easy docker-compose.yml authentication credentials injected there for unattended setup and all other initial env vars.
 sudo -u $PROJECT_USER_NAME sed -i "/^\s*\(#\s*\|\s*\)- INIT_\w\+=.\+$/d" "$DOCKER_COMPOSE_PATH/wg-easy/docker-compose.yml"
 
-# Reload vmutils docker compose project file to apply changes.
-sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d --remove-orphans
+echo "Waiting 60 seconds while traefik initializing wg-easy router..."
+sllep 60
+
+TRAEFIK_HOSTNAME=$( sudo grep 'TRAEFIK_HOSTNAME' /etc/vmutils/docker/.env | cut -d= -f2 | sed -e 's:#.*$::g' -e 's/^"//' -e 's/"$//' )
+echo ""
+echo "Wg-easy setup successfully complete."
+echo "Username: \"$WG_INIT_USERNAME\""
+echo "Password: \"$WG_INIT_PASSWORD\""
+echo "Open https://$TRAEFIK_HOSTNAME in browser to access Wg-easy." 
