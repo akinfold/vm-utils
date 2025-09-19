@@ -436,6 +436,14 @@ if [[ -n $NEW_USER_NAME ]]; then
     echo "New user basic auth password: $NEW_USER_BASIC_AUTH_PASSWORD"
     echo "Login to SSH as \"root\" disabled."
     echo "User \"$NEW_USER_NAME\" added to sudo group."
-    echo "User \"$NEW_USER_NAME\" has no password, use SSH key authentication. Add host configuration to your local \"~/.ssh/config\" file, see more in https://serverfault.com/questions/262626/how-to-configure-ssh-client-to-use-private-keys-automatically"
+    echo "User \"$NEW_USER_NAME\" has no password, use SSH key authentication."
+    echo ""
+    echo "Add host configuration to your local \"~/.ssh/config\" file:"
+    echo ""
+    echo "Host $NEW_HOSTNAME"
+    echo " PubkeyAuthentication yes"
+    echo " IdentityFile ~/.ssh/id_rsa"
+    echo " User $NEW_USER_NAME"
+    echo " Port $NEW_SSH_PORT"
 fi
 
