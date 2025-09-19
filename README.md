@@ -20,9 +20,13 @@ cd vm-utils/docker && bash install.sh
 ```
 
 ## 2. Traefik 3
+
 ```
 cd ../traefik3 && bash install.sh
 ```
+
+By default traefik configured to use Let's encrypt staging environment. This allow you to get things right before issuing trusted certificates and reduce the chance of your running up against rate limits. More info about staging environment: https://letsencrypt.org/docs/staging-environment/
+If you choose to continue with staging environment, you can later switch to trusted environment by running traefik3/switch-le-env.sh script.
 
 ## 3. WG Easy
 ```
