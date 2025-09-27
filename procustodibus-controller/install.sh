@@ -16,6 +16,6 @@ fi
 # Folder we will use to store all Pro Custodibus related configurations
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/procustodibus-controller"
 cd "$DOCKER_APPDATA_PATH/procustodibus-controller"
-sudo -u $PROJECT_USER_NAME curl -L -c /tmp/srht.cookies -b /tmp/srht.cookies https://git.sr.ht/~arx10/procustodibus-api/blob/main/ops/install/generate-docker-compose.sh | bash -s ce
+sudo -u $PROJECT_USER_NAME curl -L -c /tmp/srht.cookies -b /tmp/srht.cookies https://git.sr.ht/~arx10/procustodibus-api/blob/main/ops/install/generate-docker-compose.sh | sudo -u $PROJECT_USER_NAME bash -s ce
 
 # Change ports because we use Traefik to terminate TLS.
