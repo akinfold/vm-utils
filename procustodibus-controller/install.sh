@@ -51,6 +51,9 @@ sudo -u $PROJECT_USER_NAME cat docker-compose.yml | yq 'del(.services.app.ports[
 | .services.procustodibus-controller = .services.app | del(.services.app) 
 | .services.procustodibus-db = .services.db | del(.services.db)' | sudo -u $PROJECT_USER_NAME sponge "$DOCKER_COMPOSE_PATH/procustodibus-controller/docker-compose.yml"
 
+# Remove default procustodibus-controller docker-compose.yml
+sudo -u $PROJECT_USER_NAME rm docker-compose.yml
+
 # Replace nginx config to disable SSL and change listen port to 80 instead 443.
 sudo -u $PROJECT_USER_NAME curl -L -c /tmp/srht.cookies -b /tmp/srht.cookies -o "$DOCKER_APPDATA_PATH/procustodibus-controller/nginx/procustodibus.conf" https://git.sr.ht/~arx10/procustodibus-app/tree/main/item/ops/run/nginx-no-ssl.conf
 
