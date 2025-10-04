@@ -40,11 +40,17 @@ sudo -u $PROJECT_USER_NAME mv "./app.env" "$DOCKER_COMPOSE_PATH/procustodibus-co
 # 6. Rename default procustodibus apps names to procustodibus-api, procustodibus-controller and procustodibus-db.
 # 7. Save resulting docker-compose.yml to compose folder.
 sudo -u $PROJECT_USER_NAME cat docker-compose.yml | yq 'del(.services.app.ports[] | select(. == "*:443")) 
+| del(.version)
 | .services.app.labels=["traefik.enable=true", "traefik.http.routers.procustodibus-controller.rule=Host(`$TRAEFIK_HOSTNAME`)", "traefik.http.routers.procustodibus-controller.entrypoints=websecure", "traefik.http.routers.procustodibus-controller.service=procustodibus-controller", "traefik.http.services.procustodibus-controller.loadbalancer.server.port=80", "traefik.http.routers.procustodibus-controller.middlewares=chain-basic-auth@file"]
 | .services.app.networks.traefik += {}
 | .services.api.volumes = ["$DOCKER_APPDATA_PATH/procustodibus-controller/config:/etc/procustodibus:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/work:/work:z"]
 | .services.app.volumes = ["$DOCKER_APPDATA_PATH/procustodibus-controller/acme-challenge:/var/www/certbot:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/letsencrypt:/etc/letsencrypt:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/nginx:/etc/nginx/conf.d:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/work:/work:z"]
 | .services.db.volumes = ["db:/var/lib/postgresql/data", "$DOCKER_APPDATA_PATH/procustodibus-controller/initdb:/docker-entrypoint-initdb.d:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/work:/work:z"]
+| .services.api.container_name = "procustodibus-api"
+| .services.app.container_name = "procustodibus-controller"
+| .services.db.container_name = "procustodibus-db"
+| .services.api.depends_on = ["procustodibus-db"]
+| .services.app.depends_on = ["procustodibus-api"]
 | .services.procustodibus-api = .services.api | del(.services.api) 
 | .services.procustodibus-controller = .services.app | del(.services.app) 
 | .services.procustodibus-db = .services.db | del(.services.db)' | sudo -u $PROJECT_USER_NAME sponge "$DOCKER_COMPOSE_PATH/procustodibus-controller/docker-compose.yml"
@@ -52,8 +58,13 @@ sudo -u $PROJECT_USER_NAME cat docker-compose.yml | yq 'del(.services.app.ports[
 # Remove default procustodibus-controller docker-compose.yml
 sudo -u $PROJECT_USER_NAME rm docker-compose.yml
 
+# Update database hostname.
+sudo -u $PROJECT_USER_NAME sed -i "s/^#DB_HOSTNAME=.*/DB_HOSTNAME=procustodibus-db/" "$DOCKER_COMPOSE_PATH/procustodibus-controller/api.env"
+
 # Replace nginx config to disable SSL and change listen port to 80 instead 443.
-sudo -u $PROJECT_USER_NAME curl -L -c /tmp/srht.cookies -b /tmp/srht.cookies -o "$DOCKER_APPDATA_PATH/procustodibus-controller/nginx/procustodibus.conf" https://git.sr.ht/~arx10/procustodibus-app/tree/main/item/ops/run/nginx-no-ssl.conf
+sudo -u $PROJECT_USER_NAME curl -L -c /tmp/srht.cookies -b /tmp/srht.cookies -o "$DOCKER_APPDATA_PATH/procustodibus-controller/nginx/procustodibus.conf" https://git.sr.ht/~arx10/procustodibus-app/blob/main/ops/run/nginx-no-ssl.conf
+# Update api hostname.
+sudo -u $PROJECT_USER_NAME sed -i "s/proxy_pass http:\/\/.*:4000\/;/proxy_pass http:\/\/procustodibus-api:4000\/;/" "$DOCKER_APPDATA_PATH/procustodibus-controller/nginx/procustodibus.conf"
 
 # Add procustodibus-controller to main docker-compose.yml
 sudo -u $PROJECT_USER_NAME sed -i "/^\s*- compose\/procustodibus-controller\/docker-compose.yml/d" $DOCKER_COMPOSE_MASTER_FILE
