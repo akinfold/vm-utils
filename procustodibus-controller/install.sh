@@ -45,8 +45,7 @@ sudo -u $PROJECT_USER_NAME cat docker-compose.yml | yq 'del(.services.app.ports[
 | .services.app.networks.traefik += {}
 | .services.api.volumes = ["$DOCKER_APPDATA_PATH/procustodibus-controller/config:/etc/procustodibus:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/work:/work:z"]
 | .services.app.volumes = ["$DOCKER_APPDATA_PATH/procustodibus-controller/acme-challenge:/var/www/certbot:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/letsencrypt:/etc/letsencrypt:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/nginx:/etc/nginx/conf.d:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/work:/work:z"]
-| .services.db.volumes = ["$DOCKER_APPDATA_PATH/procustodibus-controller/db:/var/lib/postgresql/data", "$DOCKER_APPDATA_PATH/procustodibus-controller/initdb:/docker-entrypoint-initdb.d:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/work:/work:z"]
-| del(.volumes)
+| .services.db.volumes = ["db:/var/lib/postgresql/data", "$DOCKER_APPDATA_PATH/procustodibus-controller/initdb:/docker-entrypoint-initdb.d:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/work:/work:z"]
 | .services.procustodibus-api = .services.api | del(.services.api) 
 | .services.procustodibus-controller = .services.app | del(.services.app) 
 | .services.procustodibus-db = .services.db | del(.services.db)' | sudo -u $PROJECT_USER_NAME sponge "$DOCKER_COMPOSE_PATH/procustodibus-controller/docker-compose.yml"
