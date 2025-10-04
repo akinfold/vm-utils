@@ -20,7 +20,6 @@ fi
 
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_COMPOSE_PATH/procustodibus-controller"
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/procustodibus-controller"
-sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/procustodibus-controller/db"
 
 # Source: https://docs.procustodibus.com/guide/onpremises/install/#docker
 # Folder we will use to store all Pro Custodibus related configurations
