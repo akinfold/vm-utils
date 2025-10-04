@@ -26,11 +26,11 @@ sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/procustodibus-controll
 # Folder we will use to store all Pro Custodibus related configurations
 cd "$DOCKER_APPDATA_PATH/procustodibus-controller"
 
+sudo -u $PROJECT_USER_NAME curl -L -c /tmp/srht.cookies -b /tmp/srht.cookies https://git.sr.ht/~arx10/procustodibus-api/blob/main/ops/install/generate-docker-compose.sh | sudo -u $PROJECT_USER_NAME bash -s ce
+
 # Copy env files to vmutils procustodibus-acontroller compose folder.
 sudo -u $PROJECT_USER_NAME mv "./api.env" "$DOCKER_COMPOSE_PATH/procustodibus-controller/api.env"
 sudo -u $PROJECT_USER_NAME mv "./app.env" "$DOCKER_COMPOSE_PATH/procustodibus-controller/app.env"
-
-sudo -u $PROJECT_USER_NAME curl -L -c /tmp/srht.cookies -b /tmp/srht.cookies https://git.sr.ht/~arx10/procustodibus-api/blob/main/ops/install/generate-docker-compose.sh | sudo -u $PROJECT_USER_NAME bash -s ce
 
 # Build new docker-compose.yml based on pro custodibus generated one.
 # 1. Disable port exposure to host because traefik3 will do that.
