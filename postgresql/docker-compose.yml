@@ -1,0 +1,18 @@
+volumes:
+  - postgresql-data
+
+secrets:
+   postgres_password:
+     file: $POSTGRES_PASSWORD_FILE
+
+services:
+  postgresql:
+    container_name: postgresql
+    image: docker.io/postgres:alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    volumes:
+      - postgresql-data:/var/lib/postgresql/data
+    networks:
+      - postgresql
