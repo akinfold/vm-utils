@@ -27,7 +27,7 @@ sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_COMPOSE_PATH/postgresql"
 sudo -u $PROJECT_USER_NAME cp "./docker-compose.yml" "$DOCKER_COMPOSE_PATH/postgresql/docker-compose.yml"
 
 # Add postgresql to main docker-compose.yml
-sudo -u $PROJECT_USER_NAME cat $DOCKER_COMPOSE_MASTER_FILE | yq 'del(.include[] | select(. == "compose/postgresql/docker-compose.yml")) | .include += compose/postgresql/docker-compose.yml' | sudo -u $PROJECT_USER_NAME sponge $DOCKER_COMPOSE_MASTER_FILE
+sudo -u $PROJECT_USER_NAME cat $DOCKER_COMPOSE_MASTER_FILE | yq 'del(.include[] | select(. == "compose/postgresql/docker-compose.yml")) | .include += "compose/postgresql/docker-compose.yml"' | sudo -u $PROJECT_USER_NAME sponge $DOCKER_COMPOSE_MASTER_FILE
 
 # Reload vmutils docker compose project file to apply changes.
 sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d --remove-orphans

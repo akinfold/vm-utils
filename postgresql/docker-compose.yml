@@ -1,5 +1,5 @@
 volumes:
-  - postgresql-data
+  postgresql-data:
 
 secrets:
    postgres_password:
