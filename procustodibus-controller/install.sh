@@ -36,8 +36,8 @@ echo "Write postgres new password \"$PROCUSTODIBUS_DB_USER_PASSWORD\" to $PROCUS
 echo "$PROCUSTODIBUS_DB_USER_PASSWORD" | sudo tee $PROCUSTODIBUS_DB_USER_PASSWORD_FILE
 sudo chown root:root $PROCUSTODIBUS_DB_USER_PASSWORD_FILE
 # Write down path to password file to main docker environment. So we can use it in docker-compose.yml
-sudo -u $PROJECT_USER_NAME sed -i "/^PROCUSTODIBUS_DB_USER_PASSWORD_FILE=.*/d" $DOCKER_ENV_FILE
-echo "PROCUSTODIBUS_DB_USER_PASSWORD_FILE=\"$PROCUSTODIBUS_DB_USER_PASSWORD_FILE\"" | sudo -u $PROJECT_USER_NAME tee -a $DOCKER_ENV_FILE
+sudo sed -i "/^PROCUSTODIBUS_DB_USER_PASSWORD_FILE=.*/d" $DOCKER_ENV_FILE
+echo "PROCUSTODIBUS_DB_USER_PASSWORD_FILE=\"$PROCUSTODIBUS_DB_USER_PASSWORD_FILE\"" | sudo tee -a $DOCKER_ENV_FILE
 
 #
 # Generate application-level encryption key 1
@@ -49,8 +49,8 @@ echo "Write new application-level encryption key 1 \"$PROCUSTODIBUS_DB_ALEK_1\" 
 echo "$PROCUSTODIBUS_DB_ALEK_1" | sudo tee $PROCUSTODIBUS_DB_ALEK_1_FILE
 sudo chown root:root $PROCUSTODIBUS_DB_ALEK_1_FILE
 # Write down path to password file to main docker environment. So we can use it in docker-compose.yml
-sudo -u $PROJECT_USER_NAME sed -i "/^PROCUSTODIBUS_DB_ALEK_1_FILE=.*/d" $DOCKER_ENV_FILE
-echo "PROCUSTODIBUS_DB_ALEK_1_FILE=\"$PROCUSTODIBUS_DB_ALEK_1_FILE\"" | sudo -u $PROJECT_USER_NAME tee -a $DOCKER_ENV_FILE
+sudo sed -i "/^PROCUSTODIBUS_DB_ALEK_1_FILE=.*/d" $DOCKER_ENV_FILE
+echo "PROCUSTODIBUS_DB_ALEK_1_FILE=\"$PROCUSTODIBUS_DB_ALEK_1_FILE\"" | sudo tee -a $DOCKER_ENV_FILE
 
 #
 # Generate signup key required to create new organization at $APP_URL/signup.
@@ -62,8 +62,8 @@ echo "Write new signup key \"$PROCUSTODIBUS_SIGNUP_KEY\" to $PROCUSTODIBUS_SIGNU
 echo "$PROCUSTODIBUS_SIGNUP_KEY" | sudo tee $PROCUSTODIBUS_SIGNUP_KEY_FILE
 sudo chown root:root $PROCUSTODIBUS_SIGNUP_KEY_FILE
 # Write down path to password file to main docker environment. So we can use it in docker-compose.yml
-sudo -u $PROJECT_USER_NAME sed -i "/^PROCUSTODIBUS_SIGNUP_KEY_FILE=.*/d" $DOCKER_ENV_FILE
-echo "PROCUSTODIBUS_SIGNUP_KEY_FILE=\"$PROCUSTODIBUS_SIGNUP_KEY_FILE\"" | sudo -u $PROJECT_USER_NAME tee -a $DOCKER_ENV_FILE
+sudo sed -i "/^PROCUSTODIBUS_SIGNUP_KEY_FILE=.*/d" $DOCKER_ENV_FILE
+echo "PROCUSTODIBUS_SIGNUP_KEY_FILE=\"$PROCUSTODIBUS_SIGNUP_KEY_FILE\"" | sudo tee -a $DOCKER_ENV_FILE
 
 # 
 # Create folder structure for procustodibus and copy files.

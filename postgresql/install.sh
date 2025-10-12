@@ -19,8 +19,8 @@ echo "Write postgres new password \"$POSTGRES_PASSWORD\" to $POSTGRES_PASSWORD_F
 echo "$POSTGRES_PASSWORD" | sudo tee $POSTGRES_PASSWORD_FILE
 sudo chown root:root $POSTGRES_PASSWORD_FILE
 # Write down path to postgres password file to main docker environment. So we can use it in docker-compose.yml
-sudo -u $PROJECT_USER_NAME sed -i "/^POSTGRES_PASSWORD_FILE=.*/d" $DOCKER_ENV_FILE
-echo "POSTGRES_PASSWORD_FILE=\"$POSTGRES_PASSWORD_FILE\"" | sudo -u $PROJECT_USER_NAME tee -a $DOCKER_ENV_FILE
+sudo sed -i "/^POSTGRES_PASSWORD_FILE=.*/d" $DOCKER_ENV_FILE
+echo "POSTGRES_PASSWORD_FILE=\"$POSTGRES_PASSWORD_FILE\"" | sudo tee -a $DOCKER_ENV_FILE
 
 # Copy postgresql docker compose to vmutils compose folder.
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_COMPOSE_PATH/postgresql"
