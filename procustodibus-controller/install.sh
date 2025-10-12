@@ -18,55 +18,72 @@ if [[ "$( sudo docker container inspect -f '{{.State.Status}}' "traefik" 2>&1 )"
     exit 1
 fi
 
+# Check postgresql already installed
+if [[ "$( sudo docker container inspect -f '{{.State.Status}}' "postgresql" 2>&1 )" != "running" ]]; then
+    echo "Please setup postgresql with ../postgresql/install.sh script before run this setup."
+    exit 1
+fi
+
+#
+# Initialize procustodibus database.
+# Source: https://docs.docker.com/guides/pre-seeding/#pre-seed-the-postgres-database-using-a-sql-script
+#
+PROCUSTODIBUS_DB_USER_PASSWORD=$(pwgen -1BC 16 1)
+cat initdb/init2.sql | sed "s/{{ PROCUSTODIBUS_USER_PASSWORD }}/$PROCUSTODIBUS_DB_USER_PASSWORD/" |  docker exec -i postgres psql -h localhost -U postgres -f-
+PROCUSTODIBUS_DB_USER_PASSWORD_FILE="$SECRETS_PATH/PROCUSTODIBUS_DB_USER_PASSWORD"
+# Save password to secrets.
+echo "Write postgres new password \"$PROCUSTODIBUS_DB_USER_PASSWORD\" to $PROCUSTODIBUS_DB_USER_PASSWORD_FILE."
+echo "$PROCUSTODIBUS_DB_USER_PASSWORD" | sudo tee $PROCUSTODIBUS_DB_USER_PASSWORD_FILE
+sudo chown root:root $PROCUSTODIBUS_DB_USER_PASSWORD_FILE
+# Write down path to password file to main docker environment. So we can use it in docker-compose.yml
+sudo -u $PROJECT_USER_NAME sed -i "/^PROCUSTODIBUS_DB_USER_PASSWORD_FILE=.*/d" $DOCKER_ENV_FILE
+echo "PROCUSTODIBUS_DB_USER_PASSWORD_FILE=\"$PROCUSTODIBUS_DB_USER_PASSWORD_FILE\"" | sudo -u $PROJECT_USER_NAME tee -a $DOCKER_ENV_FILE
+
+#
+# Generate application-level encryption key 1
+#
+PROCUSTODIBUS_DB_ALEK_1="value:$( openssl rand -base64 32 )"
+PROCUSTODIBUS_DB_ALEK_1_FILE="$SECRETS_PATH/PROCUSTODIBUS_DB_ALEK_1"
+# Save password to secrets.
+echo "Write new application-level encryption key 1 \"$PROCUSTODIBUS_DB_ALEK_1\" to $PROCUSTODIBUS_DB_ALEK_1_FILE."
+echo "$PROCUSTODIBUS_DB_ALEK_1" | sudo tee $PROCUSTODIBUS_DB_ALEK_1_FILE
+sudo chown root:root $PROCUSTODIBUS_DB_ALEK_1_FILE
+# Write down path to password file to main docker environment. So we can use it in docker-compose.yml
+sudo -u $PROJECT_USER_NAME sed -i "/^PROCUSTODIBUS_DB_ALEK_1_FILE=.*/d" $DOCKER_ENV_FILE
+echo "PROCUSTODIBUS_DB_ALEK_1_FILE=\"$PROCUSTODIBUS_DB_ALEK_1_FILE\"" | sudo -u $PROJECT_USER_NAME tee -a $DOCKER_ENV_FILE
+
+#
+# Generate signup key required to create new organization at $APP_URL/signup.
+#
+PROCUSTODIBUS_SIGNUP_KEY=$( openssl rand -base64 12 )
+PROCUSTODIBUS_SIGNUP_KEY_FILE="$SECRETS_PATH/PROCUSTODIBUS_SIGNUP_KEY"
+# Save password to secrets.
+echo "Write new signup key \"$PROCUSTODIBUS_SIGNUP_KEY\" to $PROCUSTODIBUS_SIGNUP_KEY_FILE."
+echo "$PROCUSTODIBUS_SIGNUP_KEY" | sudo tee $PROCUSTODIBUS_SIGNUP_KEY_FILE
+sudo chown root:root $PROCUSTODIBUS_SIGNUP_KEY_FILE
+# Write down path to password file to main docker environment. So we can use it in docker-compose.yml
+sudo -u $PROJECT_USER_NAME sed -i "/^PROCUSTODIBUS_SIGNUP_KEY_FILE=.*/d" $DOCKER_ENV_FILE
+echo "PROCUSTODIBUS_SIGNUP_KEY_FILE=\"$PROCUSTODIBUS_SIGNUP_KEY_FILE\"" | sudo -u $PROJECT_USER_NAME tee -a $DOCKER_ENV_FILE
+
+# 
+# Create folder structure for procustodibus and copy files.
+# 
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_COMPOSE_PATH/procustodibus-controller"
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/procustodibus-controller"
+sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/procustodibus-controller/acme-challenge"
+sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/procustodibus-controller/letsencrypt"
+sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/procustodibus-controller/nginx"
+sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/procustodibus-controller/work"
 
-# Source: https://docs.procustodibus.com/guide/onpremises/install/#docker
-# Folder we will use to store all Pro Custodibus related configurations
-cd "$DOCKER_APPDATA_PATH/procustodibus-controller"
+sudo -u $PROJECT_USER_NAME cp "./api.env" "$DOCKER_COMPOSE_PATH/procustodibus-controller/api.env"
+sudo -u $PROJECT_USER_NAME cp "./app.env" "$DOCKER_COMPOSE_PATH/procustodibus-controller/app.env"
 
-sudo -u $PROJECT_USER_NAME curl -L -c /tmp/srht.cookies -b /tmp/srht.cookies https://git.sr.ht/~arx10/procustodibus-api/blob/main/ops/install/generate-docker-compose.sh | sudo -u $PROJECT_USER_NAME bash -s ce
+TRAEFIK_HOSTNAME=$( sudo grep 'TRAEFIK_HOSTNAME' "$DOCKER_ROOT_PATH/.env" | cut -d= -f2 | sed -e 's:#.*$::g' -e 's/^"//' -e 's/"$//' )
+sudo -u $PROJECT_USER_NAME cat ./nginx/procustodibus.conf | sed "s/{{ PROCUSTODIBUS_HOST }}/$TRAEFIK_HOSTNAME/" | sudo -u $PROJECT_USER_NAME tee "$DOCKER_APPDATA_PATH/procustodibus-controller/nginx/procustodibus.conf"
 
-# Copy env files to vmutils procustodibus-acontroller compose folder.
-sudo -u $PROJECT_USER_NAME mv "./api.env" "$DOCKER_COMPOSE_PATH/procustodibus-controller/api.env"
-sudo -u $PROJECT_USER_NAME mv "./app.env" "$DOCKER_COMPOSE_PATH/procustodibus-controller/app.env"
-
-# Build new docker-compose.yml based on pro custodibus generated one.
-# 1. Disable port exposure to host because traefik3 will do that.
-# 2. Configure traefik3 with labels.
-# 3. Connect procustodibus controller container to traefik network.
-# 4. Change paths.
-# 5. Remove db volume.
-# 6. Rename default procustodibus apps names to procustodibus-api, procustodibus-controller and procustodibus-db.
-# 7. Save resulting docker-compose.yml to compose folder.
-sudo -u $PROJECT_USER_NAME cat docker-compose.yml | yq 'del(.services.app.ports[] | select(. == "*:443")) 
-| del(.version)
-| .services.app.labels=["traefik.enable=true", "traefik.http.routers.procustodibus-controller.rule=Host(`$TRAEFIK_HOSTNAME`)", "traefik.http.routers.procustodibus-controller.entrypoints=websecure", "traefik.http.routers.procustodibus-controller.service=procustodibus-controller", "traefik.http.services.procustodibus-controller.loadbalancer.server.port=80", "traefik.http.routers.procustodibus-controller.middlewares=chain-basic-auth@file"]
-| .services.app.networks.traefik += {}
-| .services.api.volumes = ["$DOCKER_APPDATA_PATH/procustodibus-controller/config:/etc/procustodibus:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/work:/work:z"]
-| .services.app.volumes = ["$DOCKER_APPDATA_PATH/procustodibus-controller/acme-challenge:/var/www/certbot:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/letsencrypt:/etc/letsencrypt:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/nginx:/etc/nginx/conf.d:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/work:/work:z"]
-| .services.db.volumes = ["db:/var/lib/postgresql/data", "$DOCKER_APPDATA_PATH/procustodibus-controller/initdb:/docker-entrypoint-initdb.d:Z", "$DOCKER_APPDATA_PATH/procustodibus-controller/work:/work:z"]
-| .services.api.container_name = "procustodibus-api"
-| .services.app.container_name = "procustodibus-controller"
-| .services.db.container_name = "procustodibus-db"
-| .services.api.depends_on = ["procustodibus-db"]
-| .services.app.depends_on = ["procustodibus-api"]
-| .services.procustodibus-api = .services.api | del(.services.api) 
-| .services.procustodibus-controller = .services.app | del(.services.app) 
-| .services.procustodibus-db = .services.db | del(.services.db)' | sudo -u $PROJECT_USER_NAME sponge "$DOCKER_COMPOSE_PATH/procustodibus-controller/docker-compose.yml"
-
-# Remove default procustodibus-controller docker-compose.yml
-sudo -u $PROJECT_USER_NAME rm docker-compose.yml
-
-# Update database hostname.
-sudo -u $PROJECT_USER_NAME sed -i "s/^#DB_HOSTNAME=.*/DB_HOSTNAME=procustodibus-db/" "$DOCKER_COMPOSE_PATH/procustodibus-controller/api.env"
-
-# Replace nginx config to disable SSL and change listen port to 80 instead 443.
-sudo -u $PROJECT_USER_NAME curl -L -c /tmp/srht.cookies -b /tmp/srht.cookies -o "$DOCKER_APPDATA_PATH/procustodibus-controller/nginx/procustodibus.conf" https://git.sr.ht/~arx10/procustodibus-app/blob/main/ops/run/nginx-no-ssl.conf
-# Update api hostname.
-sudo -u $PROJECT_USER_NAME sed -i "s/proxy_pass http:\/\/.*:4000\/;/proxy_pass http:\/\/procustodibus-api:4000\/;/" "$DOCKER_APPDATA_PATH/procustodibus-controller/nginx/procustodibus.conf"
-
+#
 # Add procustodibus-controller to main docker-compose.yml
+#
 sudo -u $PROJECT_USER_NAME sed -i "/^\s*- compose\/procustodibus-controller\/docker-compose.yml/d" $DOCKER_COMPOSE_MASTER_FILE
 echo "  - compose/procustodibus-controller/docker-compose.yml" | sudo -u $PROJECT_USER_NAME tee -a $DOCKER_COMPOSE_MASTER_FILE
 

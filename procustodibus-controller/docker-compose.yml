@@ -1,0 +1,70 @@
+networks:
+  procustodibus:
+    driver: bridge
+
+services:
+
+  procustodibus-controller:
+    container_name: procustodibus-controller
+    depends_on:
+      - procustodibus-api
+    image: docker.io/procustodibus/app-ce:1.8
+    restart: unless-stopped
+    environment:
+      - TZ
+      - TRAEFIK_HOSTNAME # Passing the domain name to traefik container to be able to use the variable in rules. 
+      - API_URL=https://$TRAEFIK_HOSTNAME/api
+    env_file:
+      - app.env
+    volumes:
+      - $DOCKER_APPDATA_PATH/procustodibus-controller/acme-challenge:/var/www/certbot:Z
+      - $DOCKER_APPDATA_PATH/procustodibus-controller/letsencrypt:/etc/letsencrypt:Z
+      - $DOCKER_APPDATA_PATH/procustodibus-controller/nginx:/etc/nginx/conf.d:Z
+      - $DOCKER_APPDATA_PATH/procustodibus-controller/work:/work:z
+    networks:
+      - traefik
+      - procustodibus
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.procustodibus-controller.rule=Host(`$TRAEFIK_HOSTNAME`)
+      - traefik.http.routers.procustodibus-controller.entrypoints=websecure
+      - traefik.http.routers.procustodibus-controller.service=procustodibus-controller
+      - traefik.http.services.procustodibus-controller.loadbalancer.server.port=80
+      - traefik.http.routers.procustodibus-controller.middlewares=chain-basic-auth@file
+
+  procustodibus-api:
+    container_name: procustodibus-api
+    image: docker.io/procustodibus/api-ce:1.8
+    restart: unless-stopped
+    env_file:
+      - api.env
+    environment:
+      - TZ
+      - TRAEFIK_HOSTNAME # Passing the domain name to traefik container to be able to use the variable in rules. 
+      - DB_PASSWORD=/run/secrets/procustodibus_db_user_password
+      - DB_ALEK_1=/run/secrets/procustodibus_db_alek_1
+      - DB_HOSTNAME=postgresql
+      - DB_PORT=5432
+      - SIGNUP_KEY=/run/secrets/procustodibus_signup_key  # Required to create new organization at $APP_URL/signup 
+      - APP_URL=https://$TRAEFIK_HOSTNAME  # Required for prod: canonical root URL for app UI.
+      - API_CANONICAL_HOST=$TRAEFIK_HOSTNAME  # Required for prod: canonical API hostname. This should be a domain name covered by the $API_SSL_CERT.
+    secrets:
+      - procustodibus_db_user_password
+      - procustodibus_db_alek_1
+      - procustodibus_signup_key
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - $DOCKER_APPDATA_PATH/procustodibus-controller/config:/etc/procustodibus:Z
+      - $DOCKER_APPDATA_PATH/procustodibus-controller/work:/work:z
+    networks:
+      - procustodibus
+      - postgresql
+
+secrets:
+  procustodibus_db_user_password:
+    file: $PROCUSTODIBUS_DB_USER_PASSWORD_FILE
+  procustodibus_db_alek_1:
+    file: $PROCUSTODIBUS_DB_ALEK_1_FILE
+  procustodibus_signup_key:
+    file: $PROCUSTODIBUS_SIGNUP_KEY_FILE 
