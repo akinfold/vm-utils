@@ -29,7 +29,7 @@ fi
 # Source: https://docs.docker.com/guides/pre-seeding/#pre-seed-the-postgres-database-using-a-sql-script
 #
 PROCUSTODIBUS_DB_USER_PASSWORD=$(pwgen -1BC 16 1)
-cat initdb/init2.sql | sed "s/{{ PROCUSTODIBUS_USER_PASSWORD }}/$PROCUSTODIBUS_DB_USER_PASSWORD/" |  docker exec -i postgres psql -h localhost -U postgres -f-
+cat initdb/init.sql | sed "s/{{ PROCUSTODIBUS_USER_PASSWORD }}/$PROCUSTODIBUS_DB_USER_PASSWORD/" | sudo docker exec -i postgres psql -h localhost -U postgres -f-
 PROCUSTODIBUS_DB_USER_PASSWORD_FILE="$SECRETS_PATH/PROCUSTODIBUS_DB_USER_PASSWORD"
 # Save password to secrets.
 echo "Write postgres new password \"$PROCUSTODIBUS_DB_USER_PASSWORD\" to $PROCUSTODIBUS_DB_USER_PASSWORD_FILE."
