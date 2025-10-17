@@ -77,6 +77,7 @@ sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/procustodibus-controll
 
 sudo -u $PROJECT_USER_NAME cp "./api.env" "$DOCKER_COMPOSE_PATH/procustodibus-controller/api.env"
 sudo -u $PROJECT_USER_NAME cp "./app.env" "$DOCKER_COMPOSE_PATH/procustodibus-controller/app.env"
+sudo -u $PROJECT_USER_NAME cp "./app.env" "$DOCKER_APPDATA_PATH/procustodibus-controller/entrypoint.sh"
 
 TRAEFIK_HOSTNAME=$( sudo grep 'TRAEFIK_HOSTNAME' "$DOCKER_ROOT_PATH/.env" | cut -d= -f2 | sed -e 's:#.*$::g' -e 's/^"//' -e 's/"$//' )
 sudo -u $PROJECT_USER_NAME cat ./nginx/procustodibus.conf | sed "s/{{ PROCUSTODIBUS_HOST }}/$TRAEFIK_HOSTNAME/" | sudo -u $PROJECT_USER_NAME tee "$DOCKER_APPDATA_PATH/procustodibus-controller/nginx/procustodibus.conf"
@@ -91,4 +92,5 @@ echo "  - compose/procustodibus-controller/docker-compose.yml" | sudo -u $PROJEC
 sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d --remove-orphans
 
 echo ""
-echo "Open https://$TRAEFIK_HOSTNAME in browser to access Pro Custodibus Comunity Edition."
+echo "Open https://$TRAEFIK_HOSTNAME/signup in browser to access Pro Custodibus Comunity Edition and create new organization."
+echo "Use your signup key \"$PROCUSTODIBUS_SIGNUP_KEY\" to finish setup."
