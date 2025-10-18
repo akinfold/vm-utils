@@ -79,7 +79,7 @@ echo "If you choose to continue with staging environment, you can later switch t
 TRAEFIK_LE_ENVIRONMENT_SELECTION=""
 while [[ $TRAEFIK_LE_ENVIRONMENT_SELECTION != "y" ]] && [[ $TRAEFIK_LE_ENVIRONMENT_SELECTION != "n" ]]; do
     echo ""
-    echo -n "Continue with staging environment? [y/n]"
+    echo -n "Continue with staging environment? [y/n] "
     read TRAEFIK_LE_ENVIRONMENT_SELECTION
 
     if [[ $TRAEFIK_LE_ENVIRONMENT_SELECTION == "n" ]]; then
