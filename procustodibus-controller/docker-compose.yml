@@ -38,35 +38,18 @@ services:
     restart: unless-stopped
     env_file:
       - api.env
-    entrypoint: /entrypoint.sh
     environment:
       - TZ
       - TRAEFIK_HOSTNAME # Passing the domain name to traefik container to be able to use the variable in rules. 
-      - DB_PASSWORD_FILE=/run/secrets/procustodibus_db_user_password
-      - DB_ALEK_1_FILE=/run/secrets/procustodibus_db_alek_1
       - DB_HOSTNAME=postgresql
       - DB_PORT=5432
-      - SIGNUP_KEY_FILE=/run/secrets/procustodibus_signup_key  # Required to create new organization at $APP_URL/signup 
       - APP_URL=https://$TRAEFIK_HOSTNAME  # Required for prod: canonical root URL for app UI.
       - API_CANONICAL_HOST=$TRAEFIK_HOSTNAME  # Required for prod: canonical API hostname. This should be a domain name covered by the $API_SSL_CERT.
-    secrets:
-      - procustodibus_db_user_password
-      - procustodibus_db_alek_1
-      - procustodibus_signup_key
     extra_hosts:
       - host.docker.internal:host-gateway
     volumes:
-      - $DOCKER_APPDATA_PATH/procustodibus-controller/entrypoint.sh:/entrypoint.sh
       - $DOCKER_APPDATA_PATH/procustodibus-controller/config:/etc/procustodibus:Z
       - $DOCKER_APPDATA_PATH/procustodibus-controller/work:/work:z
     networks:
       - procustodibus
       - postgresql
-
-secrets:
-  procustodibus_db_user_password:
-    file: $PROCUSTODIBUS_DB_USER_PASSWORD_FILE
-  procustodibus_db_alek_1:
-    file: $PROCUSTODIBUS_DB_ALEK_1_FILE
-  procustodibus_signup_key:
-    file: $PROCUSTODIBUS_SIGNUP_KEY_FILE 
