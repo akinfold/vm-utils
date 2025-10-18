@@ -24,6 +24,67 @@ if [[ "$( sudo docker container inspect -f '{{.State.Status}}' "postgresql" 2>&1
     exit 1
 fi
 
+TRAEFIK_HOSTNAME=$( sudo grep 'TRAEFIK_HOSTNAME' "$DOCKER_ROOT_PATH/.env" | cut -d= -f2 | sed -e 's:#.*$::g' -e 's/^"//' -e 's/"$//' )
+
+
+# 
+# Configure SMTP server.
+#
+echo ""
+echo "Configure SMTP relay for Pro Custodibus to be able to receive email notifications."
+echo "You can create SMTP relay on Yandex Cloud Postbox. Follow instructions: https://yandex.cloud/ru/docs/postbox/quickstart"
+echo "Select configuration with STARTTLS support."
+echo ""
+PROCUSTODIBUS_MAIL_FROM_ADDRESS="procustodibus@$TRAEFIK_HOSTNAME"
+PROCUSTODIBUS_MAIL_RELAY="smtp"
+PROCUSTODIBUS_MAIL_RELAY_PORT="25"
+PROCUSTODIBUS_MAIL_RELAY_USERNAME=""
+PROCUSTODIBUS_MAIL_RELAY_PASSWORD=""    
+PROCUSTODIBUS_MAIL_SETUP=""
+while [[ $PROCUSTODIBUS_MAIL_SETUP != "y" ]] && [[ $PROCUSTODIBUS_MAIL_SETUP != "n" ]]; do
+    echo ""
+    echo -n "Setup SMTP mail relay? [y/n] "
+    read PROCUSTODIBUS_MAIL_SETUP
+
+    if [[ $PROCUSTODIBUS_MAIL_SETUP == "y" ]]; then
+        echo -n "Email address from which to send emails [default: $PROCUSTODIBUS_MAIL_FROM_ADDRESS]: "
+        read USER_INPUT
+        if [[ -n $USER_INPUT ]]; then 
+            PROCUSTODIBUS_MAIL_FROM_ADDRESS=$USER_INPUT 
+        fi
+
+        echo -n "Hostname of mail relay [default: $PROCUSTODIBUS_MAIL_RELAY]: "
+        read USER_INPUT
+        if [[ -n $USER_INPUT ]]; then 
+            PROCUSTODIBUS_MAIL_RELAY=$USER_INPUT 
+        fi
+
+        echo -n "Port at which to connect to mail relay [default: $PROCUSTODIBUS_MAIL_RELAY_PORT]: "
+        read USER_INPUT
+        if [[ -n $USER_INPUT ]]; then 
+            PROCUSTODIBUS_MAIL_RELAY=$USER_INPUT 
+        fi
+
+        echo -n "Username for authentication with mail relay [default: $PROCUSTODIBUS_MAIL_RELAY_USERNAME]: "
+        read USER_INPUT
+        if [[ -n $USER_INPUT ]]; then 
+            PROCUSTODIBUS_MAIL_RELAY_USERNAME=$USER_INPUT 
+        fi
+
+        echo -n "Password for authentication with mail relay [default: $PROCUSTODIBUS_MAIL_RELAY_PASSWORD]: "
+        read USER_INPUT
+        if [[ -n $USER_INPUT ]]; then 
+            PROCUSTODIBUS_MAIL_RELAY_PASSWORD=$USER_INPUT 
+        fi
+        
+    elif [[ $PROCUSTODIBUS_MAIL_SETUP == "n" ]]; then
+        echo "Continue without mail relay. Pro Custodibus won't be able to send any emails. Attempts to send email will simply fail with a harmless error message."
+    else
+        echo "Please select "y" or "n". Let's try again."
+    fi
+done
+
+
 #
 # Initialize procustodibus database.
 # Source: https://docs.docker.com/guides/pre-seeding/#pre-seed-the-postgres-database-using-a-sql-script
@@ -54,12 +115,21 @@ sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/procustodibus-controll
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/procustodibus-controller/nginx"
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/procustodibus-controller/work"
 
-cat "./api.env" | sed "s/{{ PROCUSTODIBUS_DB_ALEK_1 }}/$PROCUSTODIBUS_DB_ALEK_1/" | sed "s/{{ PROCUSTODIBUS_DB_USER_PASSWORD }}/$PROCUSTODIBUS_DB_USER_PASSWORD/" | sed "s/{{ PROCUSTODIBUS_SIGNUP_KEY }}/$PROCUSTODIBUS_SIGNUP_KEY/" | sudo -u $PROJECT_USER_NAME tee "$DOCKER_COMPOSE_PATH/procustodibus-controller/api.env"
 sudo -u $PROJECT_USER_NAME cp "./app.env" "$DOCKER_COMPOSE_PATH/procustodibus-controller/app.env"
 sudo -u $PROJECT_USER_NAME cp "./docker-compose.yml" "$DOCKER_COMPOSE_PATH/procustodibus-controller/docker-compose.yml"
+API_ENV="$DOCKER_COMPOSE_PATH/procustodibus-controller/api.env"
+
+sudo -u $PROJECT_USER_NAME cp "./api.env" "$API_ENV"
+sudo -u $PROJECT_USER_NAME sed "s/{{ PROCUSTODIBUS_DB_ALEK_1 }}/$PROCUSTODIBUS_DB_ALEK_1/g" "$API_ENV"
+sudo -u $PROJECT_USER_NAME sed "s/{{ PROCUSTODIBUS_DB_USER_PASSWORD }}/$PROCUSTODIBUS_DB_USER_PASSWORD/g" "$API_ENV"
+sudo -u $PROJECT_USER_NAME sed "s/{{ PROCUSTODIBUS_SIGNUP_KEY }}/$PROCUSTODIBUS_SIGNUP_KEY/g" "$API_ENV"
+sudo -u $PROJECT_USER_NAME sed "s/{{ PROCUSTODIBUS_MAIL_FROM_ADDRESS }}/$PROCUSTODIBUS_MAIL_FROM_ADDRESS/g" "$API_ENV"
+sudo -u $PROJECT_USER_NAME sed "s/{{ PROCUSTODIBUS_MAIL_RELAY }}/$PROCUSTODIBUS_MAIL_RELAY/g" "$API_ENV"
+sudo -u $PROJECT_USER_NAME sed "s/{{ PROCUSTODIBUS_MAIL_RELAY_PORT }}/$PROCUSTODIBUS_MAIL_RELAY_PORT/g" "$API_ENV"
+sudo -u $PROJECT_USER_NAME sed "s/{{ PROCUSTODIBUS_MAIL_RELAY_USERNAME }}/$PROCUSTODIBUS_MAIL_RELAY_USERNAME/g" "$API_ENV"
+sudo -u $PROJECT_USER_NAME sed "s/{{ PROCUSTODIBUS_MAIL_RELAY_PASSWORD }}/$PROCUSTODIBUS_MAIL_RELAY_PASSWORD/g" "$API_ENV"
 
 
-TRAEFIK_HOSTNAME=$( sudo grep 'TRAEFIK_HOSTNAME' "$DOCKER_ROOT_PATH/.env" | cut -d= -f2 | sed -e 's:#.*$::g' -e 's/^"//' -e 's/"$//' )
 sudo -u $PROJECT_USER_NAME cat ./nginx/procustodibus.conf | sed "s/{{ PROCUSTODIBUS_HOST }}/$TRAEFIK_HOSTNAME/" | sudo -u $PROJECT_USER_NAME tee "$DOCKER_APPDATA_PATH/procustodibus-controller/nginx/procustodibus.conf"
 
 #
@@ -72,5 +142,5 @@ echo "  - compose/procustodibus-controller/docker-compose.yml" | sudo -u $PROJEC
 sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d --remove-orphans
 
 echo ""
-echo "Open https://$TRAEFIK_HOSTNAME/signup in browser to access Pro Custodibus Comunity Edition and create new organization."
+echo "Open https://$TRAEFIK_HOSTNAME/signup in browser to access Pro Custodibus and create new organization."
 echo "Use your signup key \"$PROCUSTODIBUS_SIGNUP_KEY\" to finish setup."
