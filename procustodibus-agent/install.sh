@@ -25,6 +25,8 @@ sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/procustodibus-agent/wi
 READY_TO_GO=""
 PROCUSTODIBUS_WG0_CONF_FILE="$DOCKER_APPDATA_PATH/procustodibus-agent/wireguard/procustodibus.conf"
 while [[ $READY_TO_GO != "y" ]]; do
+    echo ""
+    echo ""
     echo "Copy paste content of wg0.conf file received from Pro Custodibus controller." 
     echo "More info about this file you can read on https://docs.procustodibus.com/guide/hosts/setup/#configuration-file"
     echo "Press ^D to continue."
@@ -42,6 +44,8 @@ done
 READY_TO_GO=""
 PROCUSTODIBUS_CONF_FILE="$DOCKER_APPDATA_PATH/procustodibus-agent/wireguard/procustodibus.conf"
 while [[ $READY_TO_GO != "y" ]]; do
+    echo ""
+    echo ""
     echo "Copy paste content of procustodibus.conf file received from Pro Custodibus controller." 
     echo "More info about this file you can read on https://docs.procustodibus.com/guide/hosts/setup/#configuration-file"
     echo "Press ^D to continue."
@@ -59,6 +63,8 @@ done
 READY_TO_GO=""
 PROCUSTODIBUS_SETUP_CONF_FILE="$DOCKER_APPDATA_PATH/procustodibus-agent/wireguard/procustodibus-setup.conf"
 while [[ $READY_TO_GO != "y" ]]; do
+    echo ""
+    echo ""
     echo "Copy paste content of procustodibus-setup.conf file received from Pro Custodibus controller." 
     echo "More info about this file you can read on https://docs.procustodibus.com/guide/hosts/setup/#setup-file"
     echo "Press ^D to continue."
