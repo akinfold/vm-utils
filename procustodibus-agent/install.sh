@@ -28,7 +28,7 @@ while [[ $READY_TO_GO != "y" ]]; do
     echo "Copy paste content of procustodibus.conf file received from Pro Custodibus controller." 
     echo "More info about this file you can read on https://docs.procustodibus.com/guide/hosts/setup/#configuration-file"
     echo "Press ^D to continue."
-    sudo -u $PROJECT_USER_NAME cat > $PROCUSTODIBUS_CONF_FILE
+    cat | sudo -u $PROJECT_USER_NAME tee $PROCUSTODIBUS_CONF_FILE > /dev/null
 
     read -p "Proceed with the entered data? [y/n]: " READY_TO_GO
     if [[ $READY_TO_GO != "y" ]]; then
@@ -44,7 +44,7 @@ while [[ $READY_TO_GO != "y" ]]; do
     echo "Copy paste content of procustodibus-setup.conf file received from Pro Custodibus controller." 
     echo "More info about this file you can read on https://docs.procustodibus.com/guide/hosts/setup/#setup-file"
     echo "Press ^D to continue."
-    sudo -u $PROJECT_USER_NAME cat > $PROCUSTODIBUS_SETUP_CONF_FILE
+    cat | sudo -u $PROJECT_USER_NAME tee $PROCUSTODIBUS_SETUP_CONF_FILE > /dev/null
 
     read -p "Proceed with the entered data? [y/n]: " READY_TO_GO
     if [[ $READY_TO_GO != "y" ]]; then
