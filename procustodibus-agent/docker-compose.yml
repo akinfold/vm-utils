@@ -1,0 +1,11 @@
+services:
+  wireguard:
+    container_name: procustodibus-agent
+    image: docker.io/procustodibus/agent
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 51820:51820/udp
+    volumes:
+      - $DOCKER_APPDATA_PATH/procustodibus-agent/wireguard:/etc/wireguard:Z

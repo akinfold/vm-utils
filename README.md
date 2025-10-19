@@ -33,12 +33,25 @@ If you choose to continue with staging environment, you can later switch to trus
 cd ../postgresql && bash install.sh
 ```
 
-## 4. Pro Custodibus
+## 4. Pro Custodibus controller
+
+Before setup controller prepare SMTP relay for it. 
+You can create SMTP relay on Yandex Cloud Postbox. Follow instructions: https://yandex.cloud/ru/docs/postbox/quickstart
+Select configuration with STARTTLS support.
+
 ```
 cd ../procustodibus-controller && bash install.sh
 ```
 
-## 5. WG Easy
+## 5. Pro Custodibus agent
+
+Before setup agent get files procustodibus.conf and procustodibus-setup.conf from controller. Follow instructions on https://docs.procustodibus.com/guide/hosts/setup/. After that run setup.
+
+```
+cd ../procustodibus-agent && bash install.sh
+```
+
+## 6. WG Easy
 ```
 cd ../wg-easy && bash install.sh
 ```
