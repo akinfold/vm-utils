@@ -56,7 +56,7 @@ done
 
 
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_COMPOSE_PATH/procustodibus-agent"
-sudo -u $PROJECT_USER_NAME cp "./docker-compose.yml" "$DOCKER_COMPOSE_PATH/procustodibus-controller/docker-compose.yml"
+sudo -u $PROJECT_USER_NAME cp "./docker-compose.yml" "$DOCKER_COMPOSE_PATH/procustodibus-agent/docker-compose.yml"
 
 #
 # Add procustodibus-agent to main docker-compose.yml
