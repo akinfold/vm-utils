@@ -78,3 +78,12 @@ Remove volume
 cd /etc/vmutils/docker && sudo docker volume rm <volume id>
 ```
 
+Show services
+```
+cd /etc/vmutils/docker && sudo docker compose ps
+```
+
+Restart service containers
+```
+cd /etc/vmutils/docker && sudo docker compose restart <service name>
+```

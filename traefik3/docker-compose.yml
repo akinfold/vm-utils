@@ -74,6 +74,8 @@ services:
       # HTTP Routers
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.rule=Host(`$TRAEFIK_HOSTNAME`) && PathPrefix(`/traefik`)"
+      # Set high priority for traefik dashboard.
+      - "traefik.http.routers.dashboard.priority=2147482000"
       # Services - API
       - "traefik.http.routers.dashboard.service=api@internal"
       # Middlewares

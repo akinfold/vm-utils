@@ -92,6 +92,14 @@ while [[ $TRAEFIK_LE_ENVIRONMENT_SELECTION != "y" ]] && [[ $TRAEFIK_LE_ENVIRONME
     fi
 done
 
+#
+# Allow 80 and 443 ports in UFW.
+# IMPORTANT! 
+# Without this, all http and https connections from other docker containers using public hostname and IP 
+# on the same host will be broken. For example procustodibus-agent won't be able to connect to procustodibus-controller.
+sudo ufw allow 80
+sudo ufw allow 443
+
 # Add traefik3 to main docker-compose.yml
 sudo -u $PROJECT_USER_NAME sed -i "/^\s*- compose\/traefik3\/docker-compose.yml/d" $DOCKER_COMPOSE_MASTER_FILE
 echo "  - compose/traefik3/docker-compose.yml" | sudo -u $PROJECT_USER_NAME tee -a $DOCKER_COMPOSE_MASTER_FILE

@@ -55,6 +55,12 @@ else
             echo "We failed, \"$LE_CA_OPT=$LE_CA_STAGING_URL\" not in place. Try agane later or add it to \"$TRAEFIK_DC\" manually and restart docker compose."
             exit 1
         else
+            # Clear all certificates data from acme.json to force traefik to issue new certificates.
+            # Source https://github.com/traefik/traefik/issues/3652#issuecomment-1023109210
+            sudo -u $PROJECT_USER_NAME cat "$DOCKER_APPDATA_PATH/traefik3/acme/acme.json" | jq 'del(.letsencrypt.Certificates)' | jq '.letsencrypt |= .+ {"Certificates":[]}' | sudo -u $PROJECT_USER_NAME sponge "$DOCKER_APPDATA_PATH/traefik3/acme/acme.json"
+            # Set proper permission for acme.json. Without 600 permissions on acme.json, Traefik won't start.
+            sudo -u $PROJECT_USER_NAME chmod 600 "$DOCKER_APPDATA_PATH/traefik3/acme/acme.json"
+
             # Reload vmutils docker compose project file to apply changes.
             sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d --remove-orphans
         fi
