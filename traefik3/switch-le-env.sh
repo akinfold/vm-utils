@@ -30,7 +30,7 @@ if [[ $( sudo -u $PROJECT_USER_NAME cat "$TRAEFIK_DC" | yq ".services.traefik.co
         echo "Removing staging CA from \"$TRAEFIK_DC\"."
         sudo -u $PROJECT_USER_NAME cat "$TRAEFIK_DC" | yq "del(.services.traefik.command.[] | select(. == \"$LE_CA_OPT=*\"))" | sudo -u $PROJECT_USER_NAME sponge "$TRAEFIK_DC"
         echo "Staging CA removed. Checking final configuration..."
-        if [[ $( sudo -u $PROJECT_USER_NAME grep "$LE_CA_OPT=" | wc -l ) -gt 0 ]]; then
+        if [[ $( sudo -u $PROJECT_USER_NAME grep -- "$LE_CA_OPT=" "$TRAEFIK_DC" | wc -l ) -gt 0 ]]; then
             echo "We failed, $LE_CA_OPT steel in place. Try agane later or remove it from \"$TRAEFIK_DC\" manually and restart docker compose."
             exit 1
         else
@@ -51,7 +51,7 @@ else
         echo "Adding staging CA to \"$TRAEFIK_DC\"."
         sudo -u $PROJECT_USER_NAME "$TRAEFIK_DC" | yq ".services.traefik.command += \"$LE_CA_OPT=$LE_CA_STAGING_URL\"" | sudo -u $PROJECT_USER_NAME sponge "$TRAEFIK_DC"
         echo "Staging CA added. Checking final configuration..."
-        if [[ $( sudo -u $PROJECT_USER_NAME grep "$LE_CA_OPT=$LE_CA_STAGING_URL" | wc -l ) -lt 1 ]]; then
+        if [[ $( sudo -u $PROJECT_USER_NAME grep -- "$LE_CA_OPT=$LE_CA_STAGING_URL" "$TRAEFIK_DC" | wc -l ) -lt 1 ]]; then
             echo "We failed, \"$LE_CA_OPT=$LE_CA_STAGING_URL\" not in place. Try agane later or add it to \"$TRAEFIK_DC\" manually and restart docker compose."
             exit 1
         else
