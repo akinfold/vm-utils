@@ -1,5 +1,5 @@
 services:
-  wireguard:
+  procustodibus-agent:
     container_name: procustodibus-agent
     image: docker.io/procustodibus/agent
     restart: unless-stopped
