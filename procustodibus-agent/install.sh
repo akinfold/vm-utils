@@ -23,7 +23,7 @@ fi
 sudo -u $PROJECT_USER_NAME mkdir -p "$DOCKER_APPDATA_PATH/procustodibus-agent/wireguard"
 
 READY_TO_GO=""
-PROCUSTODIBUS_WG0_CONF_FILE="$DOCKER_APPDATA_PATH/procustodibus-agent/wireguard/procustodibus.conf"
+PROCUSTODIBUS_WG0_CONF_FILE="$DOCKER_APPDATA_PATH/procustodibus-agent/wireguard/wg0.conf"
 while [[ $READY_TO_GO != "y" ]]; do
     echo ""
     echo ""
