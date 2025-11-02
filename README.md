@@ -43,6 +43,73 @@ Select configuration with STARTTLS support.
 cd ../procustodibus-controller && bash install.sh
 ```
 
+### 4.1 Pro Custodibus Hub and Spoke Topology with Spoke as Internet Gateway
+
+This topology also known as Star Topology. All Spoke hosts connect to central Hub host.
+Hub is a host with public IP which all Spokes uses to connect to. We configure our Spokes to send all their traffik through Hub, and configure Hub itself to send all its traffik through Internet Gateway Spoke.
+
+#### Guiding principle
+
+The guiding principle and most important thing to remember when configuring the routing for WireGuard interfaces (in this article, and everywhere) is this:
+
+> Use the ```AllowedIPs``` setting of each peer to specify the traffic you want to **send to** or **send through** the peer. 
+
+Specifically, ```AllowedIPs``` should be the list of IP addresses and IP address ranges that are used as the destination address for all packets that should be routed to (or through) the peer.
+
+This means that the AllowedIPs setting is usually not symmetric between two peers: For example, if you want Host A to send all its outgoing Internet traffic through Host B, you would set AllowedIPs = 0.0.0.0/0, ::/0 in Host A’s peer configuration for Host B. But on Host B, if you want to send Host A only traffic returning from the Internet that has Host A as its destination, you would set AllowedIPs = 10.0.0.1/32, fd10:0:0:1::/64 in Host B’s peer configuratio
+
+
+#### Hub configuration
+
+DNS Servers
+Use https://quad9.net/
+```
+9.9.9.9, 149.112.112.112
+```
+
+Pre Up Script
+```
+iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE
+iptables -A INPUT -p udp -m udp --dport 51820 -j ACCEPT
+iptables -A FORWARD -i wg0 -j ACCEPT
+iptables -A FORWARD -o wg0 -j ACCEPT
+```
+
+Post Down Script
+```
+iptables -t nat -D POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE
+iptables -D INPUT -p udp -m udp --dport 51820 -j ACCEPT
+iptables -D FORWARD -i wg0 -j ACCEPT
+iptables -D FORWARD -o wg0 -j ACCEPT
+```
+
+#### Spoke with Internet Gateway configuration
+
+DNS Servers
+Use https://quad9.net/
+```
+9.9.9.9, 149.112.112.112
+```
+
+Pre Up Script 
+```
+iptables -t mangle -A PREROUTING -i wg0 -j MARK --set-mark 0x30
+iptables -t nat -A POSTROUTING ! -o wg0 -m mark --mark 0x30 -j MASQUERADE
+iptables -A INPUT -p udp -m udp --dport 51820 -j ACCEPT
+iptables -A FORWARD -i wg0 -j ACCEPT
+iptables -A FORWARD -o wg0 -j ACCEPT
+```
+
+Post Down Script
+```
+iptables -t mangle -D PREROUTING -i wg0 -j MARK --set-mark 0x30
+iptables -t nat -D POSTROUTING ! -o wg0 -m mark --mark 0x30 -j MASQUERADE
+iptables -D INPUT -p udp -m udp --dport 51820 -j ACCEPT
+iptables -D FORWARD -i wg0 -j ACCEPT
+iptables -D FORWARD -o wg0 -j ACCEPT
+```
+
+
 ## 5. Pro Custodibus agent
 
 Before setup agent get files procustodibus.conf and procustodibus-setup.conf from controller. Follow instructions on https://docs.procustodibus.com/guide/hosts/setup/. After that run setup.
