@@ -91,3 +91,9 @@ echo "  - compose/procustodibus-agent/docker-compose.yml" | sudo -u $PROJECT_USE
 
 # Reload vmutils docker compose project file to apply changes.
 sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d --remove-orphans
+
+echo ""
+echo ""
+echo "Now you have Pro Custodibus Agent installed and running."
+echo "You can create up to 10 wireguard interfaces on ports within range 51820-51829."
+echo ""
