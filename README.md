@@ -56,7 +56,7 @@ The guiding principle and most important thing to remember when configuring the 
 
 Specifically, ```AllowedIPs``` should be the list of IP addresses and IP address ranges that are used as the destination address for all packets that should be routed to (or through) the peer.
 
-This means that the AllowedIPs setting is usually not symmetric between two peers: For example, if you want Host A to send all its outgoing Internet traffic through Host B, you would set AllowedIPs = 0.0.0.0/0, ::/0 in Host A’s peer configuration for Host B. But on Host B, if you want to send Host A only traffic returning from the Internet that has Host A as its destination, you would set AllowedIPs = 10.0.0.1/32, fd10:0:0:1::/64 in Host B’s peer configuratio
+This means that the AllowedIPs setting is usually not symmetric between two peers: For example, if you want Host A to send all its outgoing Internet traffic through Host B, you would set AllowedIPs = 0.0.0.0/0, ::/0 in Host A’s peer configuration for Host B. But on Host B, if you want to send Host A only traffic returning from the Internet that has Host A as its destination, you would set AllowedIPs = 10.0.0.1/32, fd10:0:0:1::/64 in Host B’s peer configuration.
 
 
 #### Hub configuration
@@ -141,6 +141,11 @@ Read logs
 cd /etc/vmutils/docker && sudo docker compose logs --follow
 ```
 
+Show containers
+```
+cd /etc/vmutils/docker && sudo docker compose ps
+```
+
 Show volumes
 ```
 cd /etc/vmutils/docker && sudo docker volume ls
@@ -159,4 +164,9 @@ cd /etc/vmutils/docker && sudo docker compose ps
 Restart service containers
 ```
 cd /etc/vmutils/docker && sudo docker compose restart <service name>
+```
+
+Get service 
+```
+cd /etc/vmutils/docker && sudo docker exec -it <container name> sh
 ```
