@@ -118,6 +118,12 @@ Before setup agent get files procustodibus.conf and procustodibus-setup.conf fro
 cd ../procustodibus-agent && bash install.sh
 ```
 
+### 5.1 Update Pro Custodibus agent to latest version
+
+```
+cd /etc/vmutils/docker && sudo docker pull procustodibus/agent && sudo docker compose -f docker-compose.yml -p vmutils up -d --remove-orphans
+```
+
 ## 6. WG Easy
 ```
 cd ../wg-easy && bash install.sh
