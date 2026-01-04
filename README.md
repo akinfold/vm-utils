@@ -62,10 +62,7 @@ This means that the AllowedIPs setting is usually not symmetric between two peer
 #### Hub configuration
 
 DNS Servers
-Use https://quad9.net/
-```
-9.9.9.9, 149.112.112.112
-```
+Do not specify DNS servers.
 
 Pre Up Script
 ```
@@ -86,10 +83,7 @@ iptables -D FORWARD -o wg0 -j ACCEPT
 #### Spoke with Internet Gateway configuration
 
 DNS Servers
-Use https://quad9.net/
-```
-9.9.9.9, 149.112.112.112
-```
+Do not specify DNS servers.
 
 Pre Up Script 
 ```
