@@ -64,6 +64,8 @@ This means that the AllowedIPs setting is usually not symmetric between two peer
 DNS Servers
 Do not specify DNS servers.
 
+Go to ```Hosts > {Hub hostname} > Interfaces > wg0 > Edit``` and copy-paste commands below to corresponding fields.
+
 Pre Up Script
 ```
 iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE
@@ -84,6 +86,8 @@ iptables -D FORWARD -o wg0 -j ACCEPT
 
 DNS Servers
 Do not specify DNS servers.
+
+Go to ```Hosts > {Spoke with Internet Gateway hostname} > Interfaces > wg0 > Edit``` and copy-paste commands below to corresponding fields.
 
 Pre Up Script 
 ```
