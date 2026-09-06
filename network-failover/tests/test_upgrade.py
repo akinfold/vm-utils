@@ -60,7 +60,7 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(u.one(exit_iface, 'Address'), '10.250.1.2/30')
         self.assertEqual(u.one(exit_peers[0], 'PublicKey'), key(9))
         self.assertEqual(u.one(exit_peers[0], 'PresharedKey'), key(7))
-        self.assertIn('10.0.0.5/32', u.one(exit_peers[0], 'AllowedIPs'))
+        self.assertIn('10.0.0.0/24', u.one(exit_peers[0], 'AllowedIPs'))
         self.assertNotIn(key(8), json.dumps(bundles))
         self.assertNotIn(key(7), json.dumps(bundles))
 
@@ -95,7 +95,7 @@ class MigrationTests(unittest.TestCase):
         host = Mock()
         host.directory = Path('/example/wireguard')
         host.configs.return_value = {'wg0': HUB}
-        plan = {'machine': 'fixture', 'wireguard_directory': str(host.directory), 'role': 'hub',
+        plan = {'version': 1, 'machine': 'fixture', 'wireguard_directory': str(host.directory), 'role': 'hub',
                 'before': {'wg0': u.digest(HUB)}, 'desired': {'wg0': HUB+'\n'}}
         with patch.object(Path, 'read_text', return_value='fixture'):
             self.assertTrue(u.check_plan(plan, host))
@@ -110,7 +110,7 @@ class MigrationTests(unittest.TestCase):
         host = Mock()
         host.net.return_value.stdout = json.dumps([{'priority': 20000, 'src': 'all', 'table': 42}])
         with self.assertRaises(ValueError):
-            u.clean_policy(host, config)
+            u.validate_policy_space(host, config)
         self.assertEqual(host.net.call_count, 1)
 
     def test_backup_preserves_file_mode_and_missing_path(self):

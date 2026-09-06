@@ -60,8 +60,10 @@ clients -> hub wg0 -> wg-exit-a -> exit A -> Internet
 
 The agent runs WireGuard inside its container. The root systemd supervisor runs on
 Ubuntu and enters that container's **current network namespace** with `nsenter` on
-every cycle. It therefore follows container recreation instead of retaining an old
-namespace. The worker uses host-installed Python/iproute2/iptables tools; no custom
+every cycle, pinning the namespace with an open descriptor so PID reuse cannot
+redirect routing changes into another namespace. Host-network containers are
+rejected. The worker selects host `iptables-nft` or `iptables-legacy` to match the
+agent container, including backups and rollback. It uses host-installed tools; no custom
 agent image, Docker socket mount, or scripts inside the container are necessary.
 
 The controller's own traffic, SSH, agent management, and WireGuard's outer UDP
@@ -185,7 +187,9 @@ After seven continuously unsuccessful days, a candidate is removed from
 are checked every five minutes; after the first success, fast checks resume, and
 three successes restore the candidate automatically. Linux removes device routes
 when an interface is deleted, but the registry retains the record for rediscovery.
-A changed WireGuard identity or transit address resets the old node's health/history.
+An interface that disappears or goes down must pass fresh recovery checks when it
+returns, even with the same identity. A changed WireGuard identity or transit
+address resets the old node's health/history.
 Retirement does not delete Pro Custodibus hosts, peers, keys, or interfaces.
 
 The native WAN can only provide connectivity when the hub and its own upstream
@@ -248,7 +252,10 @@ sudo nsenter --target "$(sudo docker inspect -f '{{.State.Pid}}' procustodibus-a
 sudo nsenter --target "$(sudo docker inspect -f '{{.State.Pid}}' procustodibus-agent)" --net -- ip route show table vpn_active
 ```
 
-The supervisor rereads configuration each cycle. After an observation gap it
+The supervisor rereads configuration each cycle. Invalid configuration or an
+in-place routing-layout change triggers fallback through the previously owned WAN
+policy. Change table IDs, container/role, or interface layout through an explicit
+migration; restarting the supervisor does not bypass this check. After an observation gap it
 requires fresh successes before trusting a stored healthy state. Stopping the
 service leaves its last routes/firewall rules installed; it is not a rollback.
 If abandoning the feature, first restore a reviewed routing configuration and then
@@ -281,7 +288,10 @@ file such as `/root/topology.json`. Fill in:
 No private keys belong in this topology file. The public keys explicitly identify
 which peers to remove from the old shared interface. Include every default-route
 exit, even if one is currently disabled. Client peers and their Allowed IPs are
-preserved. With the repository's default Docker publication use hub ports
+preserved. Exit return routes cover the hub's attached VPN subnet and existing
+routed client ranges, so adding a client in the same subnet needs no exit edit.
+Adding an entirely new routed source range still requires updating the upstream
+peer's Allowed IPs on exits; WireGuard source authorization cannot be inferred remotely. With the repository's default Docker publication use hub ports
 `51821`–`51829`; publishing additional ports and opening a provider firewall, if
 needed, remains an explicit infrastructure change.
 
@@ -305,8 +315,8 @@ all the new hub interfaces with `Table = off`. The client interface keeps ordina
 specific routes. Until an exit has been upgraded and passes health checks, clients
 use the hub's native WAN automatically.
 
-Before changing live interfaces, it stops only the agent daemon and watchdog,
-saves protected backups, and arms a separate systemd rollback timer. A failed apply
+Before stopping either live service, it saves protected backups and enables a
+persistent systemd rollback timer. It then stops only the agent daemon and watchdog. A failed apply
 attempt immediately restores the saved configuration. A lost SSH session does not
 cancel the timer. Verify Internet access **from an actual VPN client** and the
 controller UI, then run the exact `confirm` command printed by the upgrade, before
@@ -319,10 +329,14 @@ sudo python3 /var/lib/vmutils-network-migrations/UUID/upgrade.py rollback /var/l
 
 `UUID` is the migration ID printed on that host. Keep the backup directory until
 verification is complete. Backups include the affected tunnel files, installed
-watchdog files/configuration/state, table registry and namespace firewall snapshot.
-Confirmation disarms automatic rollback; do not treat an old confirmed backup as
-safe to replay after subsequent network changes. Timers survive an SSH disconnect,
-but are transient and do not survive a host reboot: do not reboot during cutover.
+watchdog files/configuration/state, table registry, owned routes/rules, sysctl values
+and namespace firewall snapshot. SQLite history is backed up transactionally,
+including committed WAL records. An interrupted rollback can be retried.
+Confirmation verifies the applied files and running watchdog before disarming
+rollback. Confirmation after the deadline performs rollback instead. Do not treat
+an old confirmed backup as safe to replay after subsequent network changes. The timer and its recovery service survive a host reboot. An overdue timer runs
+after startup, and recovery retries if Docker is temporarily unavailable. A reboot
+can still interrupt connections; it is not part of a normal migration.
 If the controller is unreachable or gains queued changes during rollback, local
 routing is restored but the agent daemon remains stopped; resolve its connectivity
 or queue and start it with `docker exec procustodibus-agent rc-service procustodibus-agent start`.
@@ -346,7 +360,10 @@ address with the allocated transit address, sets the new hub peer and keepalive,
 and enables automatic reverse routing, forwarding and NAT. Its old private VPN
 address therefore changes; update references to that address if you used it for
 administration. No routing/iptables scripts need to be pasted into the exit's UI.
-Custom hooks, DNS changes, SaveConfig, multiple upstream peers and unsupported
+The upgrade also refuses transit/native-route overlap, mismatched UDP publication,
+client identities mistakenly listed as exits, mismatched pre-shared keys, IPv6
+interfaces, and custom routing tables. Custom hooks, DNS changes, SaveConfig,
+multiple upstream peers and unsupported
 settings require review; the upgrade refuses to guess how to rewrite them.
 
 After each apply, the existing agent reports its local files to Pro Custodibus
@@ -363,6 +380,10 @@ node, use `bash install.sh hub` or `bash install.sh exit`; this preserves its tu
 and history and does not reenroll the node or change WireGuard interfaces.
 
 #### Tests
+
+See [review findings](network-failover/REVIEW.md) and the
+[live-server test plan](network-failover/LIVE-TEST.md) before the first rollout.
+
 
 ```sh
 python3 -m unittest discover -s network-failover/tests -v
@@ -381,6 +402,24 @@ docker run --rm --network none --cap-add NET_ADMIN --cap-add NET_RAW \
   --cap-add SYS_ADMIN --security-opt apparmor=unconfined \
   -v "$PWD:/work:ro" vmutils-failover-test:local \
   python3 network-failover/tests/migration_integration.py
+
+# Namespace pinning after the inspected process exits.
+docker run --rm --network none --cap-add NET_ADMIN --cap-add SYS_ADMIN \
+  --security-opt apparmor=unconfined -v "$PWD:/work:ro" vmutils-failover-test:local \
+  python3 network-failover/tests/namespace_integration.py
+
+# Run the real supervisor across namespace replacement and invalid-config restart.
+docker run --rm --network none --cap-add NET_ADMIN --cap-add NET_RAW \
+  --cap-add SYS_ADMIN --security-opt apparmor=unconfined -v "$PWD:/work:ro" \
+  vmutils-failover-test:local python3 network-failover/tests/supervisor_integration.py
+
+# Real systemd timers in a disposable container, with no network or Docker socket.
+docker build -t vmutils-failover-systemd-test:local -f network-failover/tests/Dockerfile.systemd .
+docker run -d --name vmutils-review-systemd --network none --privileged \
+  --cgroupns=private --tmpfs /run --tmpfs /run/lock --tmpfs /tmp \
+  -v "$PWD:/work:ro" vmutils-failover-systemd-test:local
+docker exec vmutils-review-systemd python3 /work/network-failover/tests/systemd_integration.py
+docker rm -f vmutils-review-systemd
 ```
 
 `SYS_ADMIN` is used only by the disposable integration container to create its own
@@ -389,7 +428,12 @@ real WireGuard interfaces, private local TLS endpoints and fresh client connecti
 it simulates the seven-day clock for retirement. The migration test replaces only
 Docker, systemd and controller-report adapters; WireGuard, routes, NAT, file backups
 and restoration are real. A live controller/systemd deployment still requires the
-maintenance-window validation above. Tests do not contact production VPSs.
+maintenance-window validation above. The separate systemd test exercises actual
+calendar deadlines, overdue activation, and cancellation; its callback writes a
+fixture marker. Its `prepare-restart` / `verify-restart` phases also verify a complete
+container/systemd restart with the deadline missed while stopped. Repeat the main
+integration test with `-e VMUTILS_IPTABLES_BACKEND=legacy` to exercise legacy NAT.
+Tests do not contact production VPSs.
 
 References: [Pro Custodibus containers](https://docs.procustodibus.com/guide/agents/container/),
 [interface routing options](https://docs.procustodibus.com/guide/interfaces/add/),

@@ -2,6 +2,7 @@
 """WireGuard exit discovery, health checks and routing in the agent's network namespace."""
 import argparse
 import concurrent.futures
+from contextlib import contextmanager
 import fcntl
 import ipaddress
 import json
@@ -24,13 +25,32 @@ LOG = logging.getLogger("vmutils-failover")
 PROTOCOL = "242"
 MARK_BASE = 0x6F000000
 MAX_EXITS = 128
-NAME = re.compile(r"^[a-zA-Z0-9_.-]{1,15}$")
+NAME = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,14}$")
 DEFAULT_CONFIG = "/etc/vmutils/network-failover/config.json"
 DEFAULT_STATE = "/var/lib/vmutils-network-failover"
 
 
+def firewall_command(args):
+    backend = os.environ.get("VMUTILS_IPTABLES_BACKEND")
+    if backend not in (None, "nft", "legacy"):
+        raise ValueError("Invalid firewall backend")
+    if backend and args[0] in ("iptables", "iptables-save", "iptables-restore"):
+        suffix = str(args[0])[len("iptables"):]
+        return ("iptables-"+backend+suffix, *args[1:])
+    return args
+
+
+def agent_firewall_backend(container):
+    version = run("docker", "exec", container, "iptables", "--version").stdout
+    if "nf_tables" in version:
+        return "nft"
+    if "iptables v" in version:
+        return "legacy"
+    raise ValueError("Cannot determine the agent firewall backend")
+
+
 def run(*args, check=True, input=None):
-    return subprocess.run(args, text=True, input=input, capture_output=True,
+    return subprocess.run(firewall_command(args), text=True, input=input, capture_output=True,
                           timeout=15, check=check)
 
 
@@ -38,41 +58,91 @@ def ip_json(*args):
     return json.loads(run("ip", "-N", "-j", "-4", *args).stdout)
 
 
-def load_config(path):
-    c = json.loads(Path(path).read_text())
+def inspect_container(container):
+    info = json.loads(run("docker", "inspect", container).stdout)[0]
+    if (not info["State"]["Running"] or info["State"]["Pid"] <= 1
+            or info["HostConfig"].get("NetworkMode") == "host"):
+        raise ValueError("A running agent with its own network namespace is required")
+    return info
+
+
+def container_identity(info):
+    return (info["Id"], info["State"]["Pid"], info["State"]["StartedAt"])
+
+
+@contextmanager
+def container_namespace(container, expected=None):
+    info = inspect_container(container)
+    identity = container_identity(info)
+    if expected is not None and identity != expected:
+        raise RuntimeError("Agent container changed during migration; rolling back")
+    fd = os.open(f"/proc/{info['State']['Pid']}/ns/net", os.O_RDONLY)
+    try:
+        # Pin the namespace, not a PID that can exit and be reused by another process.
+        if os.fstat(fd).st_ino == os.stat("/proc/self/ns/net").st_ino:
+            raise ValueError("Refusing to modify the host network namespace")
+        if identity != container_identity(inspect_container(container)):
+            raise RuntimeError("Agent container changed while opening its namespace")
+        yield fd
+    finally:
+        os.close(fd)
+
+
+def validate_config(c):
+    if not isinstance(c, dict):
+        raise ValueError("Configuration must be a JSON object")
+    if not isinstance(c.get("container"), str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,254}", c["container"]):
+        raise ValueError("Invalid Docker container name")
+    if not isinstance(c.get("exit_interfaces"), list) or not isinstance(c.get("internet_targets"), list):
+        raise ValueError("Exit interfaces and probe targets must be lists")
+    if any(not isinstance(t, dict) for t in c["internet_targets"]):
+        raise ValueError("Each probe target must be an object")
+    integer_keys = ("candidate_table", "active_table", "probe_table_base", "policy_priority",
+                    "failure_threshold", "recovery_threshold", "minimum_samples", "internet_quorum")
+    for key in integer_keys:
+        if type(c[key]) is not int or c[key] < 1:
+            raise ValueError(f"{key} must be a positive integer")
+    for key in ("interval_seconds", "retire_after_seconds", "retired_probe_seconds",
+                "history_seconds", "sample_seconds", "half_life_seconds", "probe_timeout_seconds",
+                "switch_hold_seconds", "minimum_dwell_seconds", "recent_loss_limit",
+                "switch_margin_ms", "switch_margin_fraction"):
+        if type(c[key]) not in (int, float) or not math.isfinite(c[key]) or c[key] < 0:
+            raise ValueError(f"{key} must be a finite nonnegative number")
+        if key not in ("recent_loss_limit", "switch_margin_ms", "switch_margin_fraction") and c[key] == 0:
+            raise ValueError(f"{key} must be positive")
     if c["role"] not in ("hub", "exit"):
         raise ValueError("role must be hub or exit")
-    if not NAME.fullmatch(c["client_interface"]) or not c["exit_prefix"]:
-        raise ValueError("Invalid interface or exit prefix")
-    if any(not NAME.fullmatch(n) for n in c["exit_interfaces"]):
+    if (not NAME.fullmatch(c["client_interface"]) or not NAME.fullmatch(c["exit_prefix"])
+            or c["client_interface"].startswith(c["exit_prefix"])):
+        raise ValueError("Invalid or overlapping interface names")
+    if not c["exit_interfaces"] or any(not NAME.fullmatch(n) for n in c["exit_interfaces"]):
         raise ValueError("Invalid exit interface")
     if c["score_mode"] not in ("weighted", "median7d"):
         raise ValueError("score_mode must be weighted or median7d")
     tables = [c["candidate_table"], c["active_table"]]
     probes = range(c["probe_table_base"] + 1, c["probe_table_base"] + MAX_EXITS + 1)
-    if (len(set(tables)) != 2 or any(t in (0, 253, 254, 255) or t < 1 for t in tables)
-            or any(t in probes for t in tables)
-            or c["probe_table_base"] < 1000
-            or c["probe_table_base"] + MAX_EXITS >= c["policy_priority"] - 1):
-        raise ValueError("Routing table/priority ranges overlap or are reserved")
-    for key in ("interval_seconds", "failure_threshold", "recovery_threshold",
-                "retire_after_seconds", "retired_probe_seconds", "history_seconds",
-                "sample_seconds", "half_life_seconds", "minimum_samples",
-                "probe_timeout_seconds", "switch_hold_seconds", "minimum_dwell_seconds"):
-        if c[key] <= 0:
-            raise ValueError(f"{key} must be positive")
-    if not 0 <= c["recent_loss_limit"] <= 1:
-        raise ValueError("recent_loss_limit must be between zero and one")
-    if c["switch_margin_ms"] < 0 or c["switch_margin_fraction"] < 0:
-        raise ValueError("Switch margins cannot be negative")
-    if not 1 <= c["internet_quorum"] <= len(c["internet_targets"]):
-        raise ValueError("Invalid internet quorum")
+    if (len(set(tables)) != 2 or any(t in (253, 254, 255) or t > 2**31-1 for t in tables)
+            or any(t in probes for t in tables) or c["probe_table_base"] < 1000
+            or c["probe_table_base"] + MAX_EXITS >= c["policy_priority"] - 1
+            or c["policy_priority"] >= 32766):
+        raise ValueError("Routing ranges overlap, are reserved, or follow the main-table rule")
+    if not 0 <= c["recent_loss_limit"] <= 1 or c["probe_timeout_seconds"] > 10:
+        raise ValueError("Invalid loss limit or probe timeout (maximum 10 seconds)")
+    if not 1 <= c["internet_quorum"] <= len(c["internet_targets"]) <= 8:
+        raise ValueError("Invalid internet quorum or target count (maximum eight)")
     for target in c["internet_targets"]:
         if ipaddress.ip_address(target["ip"]).version != 4:
             raise ValueError("This release probes IPv4 exits only")
-        if not 1 <= target["port"] <= 65535 or not target["server_name"]:
+        if type(target["port"]) is not int or not 1 <= target["port"] <= 65535 or not target["server_name"]:
             raise ValueError("Invalid TLS target")
     return c
+
+
+def load_config(path):
+    try:
+        return validate_config(json.loads(Path(path).read_text()))
+    except (KeyError, TypeError) as exc:
+        raise ValueError("Missing or incorrectly typed watchdog configuration field") from exc
 
 
 class Store:
@@ -104,10 +174,13 @@ class Store:
         return [dict(r) for r in self.db.execute("SELECT * FROM nodes ORDER BY slot")]
 
     def discover(self, discovered, now):
+        previously_present = {n["name"] for n in self.nodes() if n["present"]}
         self.db.execute("UPDATE nodes SET present=0")
         for node in discovered:
             old = self.db.execute("SELECT * FROM nodes WHERE name=?", (node["name"],)).fetchone()
             if old and old["identity"] == node["identity"]:
+                if node["name"] not in previously_present:
+                    self.db.execute("UPDATE nodes SET healthy=0,good=0,bad=0,last_probe=0 WHERE name=?", (node["name"],))
                 self.db.execute("UPDATE nodes SET present=? WHERE name=?", (int(node.get("usable", True)), node["name"]))
                 continue
             if old:
@@ -123,6 +196,7 @@ class Store:
                 (name,slot,identity,gateway,created,inactive_since,present)
                 VALUES (?,?,?,?,?,?,?)""",
                 (node["name"], slot, node["identity"], node["gateway"], now, now, int(node.get("usable", True))))
+        self.db.execute("UPDATE nodes SET healthy=0,good=0,bad=0 WHERE present=0")
         self.db.commit()
 
     def observe(self, name, ok, rtt, now, c):
@@ -403,7 +477,18 @@ def probe(node, c):
     return ok, rtt
 
 
+ROUTING_KEYS = ("role", "container", "client_interface", "exit_prefix", "exit_interfaces",
+                "candidate_table", "active_table", "probe_table_base", "policy_priority")
+
+
 def cycle(c, store, now):
+    previous_config = store.get("routing_config")
+    if previous_config and any(c[k] != previous_config[k] for k in ROUTING_KEYS):
+        raise ValueError("Routing layout changed; migrate it explicitly instead of editing live table IDs")
+    if now < store.get("last_cycle", 0):
+        store.db.execute("UPDATE nodes SET healthy=0,good=0,bad=0,last_probe=0,last_sample=0,inactive_since=?", (now,))
+        store.db.execute("DELETE FROM samples WHERE ts>?", (now,))
+        store.put("pending", None)
     interfaces = run("wg", "show", "interfaces").stdout.split()
     defaults = [r for r in routes("main") if r.get("dst") == "default" and r.get("dev") not in interfaces]
     if not defaults:
@@ -412,6 +497,8 @@ def cycle(c, store, now):
     if c["role"] == "exit":
         monitored = [n for n in c["exit_interfaces"] if n in interfaces]
         network_setup(c, monitored, wan["dev"])
+        store.put("routing_config", c)
+        store.put("last_cycle", now)
         store.put("status", {"role": "exit", "updated": now, "interfaces": monitored, "wan": wan})
         store.db.commit()
         return
@@ -447,7 +534,11 @@ def cycle(c, store, now):
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
         jobs = {n["name"]: pool.submit(probe, n, c) for n in due if n["present"]}
         for node in due:
-            ok, rtt = jobs[node["name"]].result() if node["name"] in jobs else (False, None)
+            try:
+                ok, rtt = jobs[node["name"]].result() if node["name"] in jobs else (False, None)
+            except (OSError, subprocess.SubprocessError) as exc:
+                LOG.warning("Probe failed for %s: %s", node["name"], type(exc).__name__)
+                ok, rtt = False, None
             store.observe(node["name"], ok, rtt, now, c)
     nodes = store.nodes()
     for node in nodes:
@@ -470,6 +561,7 @@ def cycle(c, store, now):
     store.put("pending", pending)
     store.put("last_cycle", now)
     store.put("namespace_id", namespace_id)
+    store.put("routing_config", c)
     store.put("routing_ready", True)
     store.put("status", {"role": "hub", "updated": now, "selected": selected or "hub WAN",
         "pending": pending, "nodes": [{**n, **scores[n["name"]]} for n in nodes]})
@@ -477,17 +569,19 @@ def cycle(c, store, now):
 
 
 def worker(config, directory):
-    c = load_config(config)
     Path(directory).mkdir(parents=True, exist_ok=True)
     with open(Path(directory)/"worker.lock", "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         store = Store(directory)
+        c = store.get("routing_config")
         try:
-            cycle(c, store, time.time())
+            requested = load_config(config)
+            c = c or requested
+            cycle(requested, store, time.time())
         except Exception:
             # Once this service owns the policy, a failed reconciliation must not strand
             # clients on an exit that can no longer be checked. Preserve foreign tables.
-            if c["role"] == "hub" and store.get("routing_ready", False):
+            if c and c["role"] == "hub" and store.get("routing_ready", False):
                 try:
                     wireguard = run("wg", "show", "interfaces").stdout.split()
                     defaults = [r for r in routes("main") if r.get("dst") == "default"
@@ -516,29 +610,41 @@ def supervise(config, directory):
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     last_error = None
+    store = Store(directory)
+    try:
+        c = store.get("routing_config")
+    finally:
+        store.db.close()
     while running:
         started = time.monotonic()
-        c = load_config(config)
         try:
-            result = run("docker", "inspect", "--format", "{{.State.Pid}}", c["container"], check=False)
-            if result.returncode or not result.stdout.strip().isdigit() or int(result.stdout.strip()) <= 0:
-                raise RuntimeError("Waiting for the Pro Custodibus agent container")
-            # Re-enter the current namespace every cycle, including after container recreation.
-            proc = subprocess.run(["nsenter", "--target", result.stdout.strip(), "--net", "--",
-                sys.executable, str(Path(__file__).resolve()), "--config", config,
-                "--state-dir", directory, "once"], text=True, capture_output=True,
-                timeout=max(60, MAX_EXITS*c["probe_timeout_seconds"]//8+30))
+            try:
+                requested = load_config(config)
+                if c and any(requested[k] != c[k] for k in ROUTING_KEYS):
+                    raise ValueError("Routing layout changed; an explicit migration is required")
+                c = requested
+            except (OSError, ValueError) as exc:
+                if c is None:
+                    raise
+                LOG.error("Invalid configuration; using the last valid namespace: %s", exc)
+            with container_namespace(c["container"]) as namespace:
+                backend = agent_firewall_backend(c["container"])
+                proc = subprocess.run(["nsenter", f"--net=/proc/self/fd/{namespace}", "--",
+                    sys.executable, str(Path(__file__).resolve()), "--config", config,
+                    "--state-dir", directory, "once"], text=True, capture_output=True,
+                    pass_fds=(namespace,), env={**os.environ, "VMUTILS_IPTABLES_BACKEND": backend},
+                    timeout=max(60, math.ceil(MAX_EXITS/8)*2*c["probe_timeout_seconds"]+60))
             if proc.returncode:
                 raise RuntimeError(proc.stderr.strip())
             if proc.stderr:
                 LOG.info("%s", proc.stderr.strip())
             last_error = None
-        except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
             if str(exc) != last_error:
                 LOG.error("%s", exc)
                 last_error = str(exc)
         # Interruptible sleep keeps shutdown responsive.
-        while running and time.monotonic()-started < c["interval_seconds"]:
+        while running and time.monotonic()-started < (c["interval_seconds"] if c else 5):
             time.sleep(.2)
 
 

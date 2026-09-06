@@ -18,6 +18,12 @@ def atomic_write(path, content, mode=0o644):
             os.fsync(stream.fileno())
         os.chmod(temporary, mode)
         os.replace(temporary, path)
+        # Persist the directory entry as well as file data before announcing a backup/marker.
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)

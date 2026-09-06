@@ -49,6 +49,9 @@ AllowedIPs = 0.0.0.0/0
             (volume/'wg0.conf').write_text(old)
             (volume/'wg0.conf').chmod(0o600)
             net('wg-quick', 'up', volume/'wg0.conf')
+            # A stopped prior watchdog may still have an installed owned policy.
+            net('ip', '-4', 'route', 'add', 'default', 'table', '201', 'via', '192.0.2.254', 'dev', 'wan0', 'proto', '242')
+            net('ip', '-4', 'rule', 'add', 'priority', '20000', 'iif', 'wg0', 'table', '201')
             original_rules = net('ip', '-N', '-j', '-4', 'rule', 'show').stdout
             assert any(str(r.get('table')) == '51820' for r in json.loads(original_rules))
             config_path, state, library = root/'config.json', root/'state', root/'lib'
@@ -56,6 +59,7 @@ AllowedIPs = 0.0.0.0/0
             service = {'active': False, 'enabled': False}
             calls = []
             fail_report = [False]
+            fail_before_cutover = [False]
 
             class Host:
                 def __init__(self, container):
@@ -70,6 +74,9 @@ AllowedIPs = 0.0.0.0/0
                     pass
                 def report(self, interfaces, script=None):
                     calls.append('report')
+                    if fail_before_cutover[0] and list(u.SYSTEMD.glob('*.timer')):
+                        fail_before_cutover[0] = False
+                        raise RuntimeError('Injected pre-cutover report failure')
                     if fail_report[0] and config_path.exists():
                         fail_report[0] = False
                         raise RuntimeError('Injected controller report failure')
@@ -84,6 +91,7 @@ AllowedIPs = 0.0.0.0/0
                                 '--state-dir', state, 'once')
                     return net(*args, **kw)
 
+            Host.validate_networks = u.Host.validate_networks
             original_command = u.command
             def command(*args, **kw):
                 calls.append(args)
@@ -99,7 +107,7 @@ AllowedIPs = 0.0.0.0/0
                         ok = True
                         if op in ('start', 'restart', 'stop') and args[2] == u.SERVICE:
                             service['active'] = op != 'stop'
-                        if op in ('enable', 'disable'):
+                        if op in ('enable', 'disable') and u.SERVICE in args:
                             service['enabled'] = op == 'enable'
                     return type('Result', (), {'returncode': 0 if ok else 1})()
                 if args[0] == 'env':
@@ -116,7 +124,7 @@ AllowedIPs = 0.0.0.0/0
                 return original_command(*args, **kw)
 
             replacements = dict(Host=Host, command=command, CONFIG=config_path, STATE=state,
-                LIB=library, UNIT_FILE=root/'unit', TABLES=root/'tables', BACKUPS=root/'backups')
+                LIB=library, UNIT_FILE=root/'unit', TABLES=root/'tables', BACKUPS=root/'backups', SYSTEMD=root/'systemd')
             with patch.multiple(u, **replacements):
                 host = Host('fixture')
                 topology = {'hub_endpoint': '192.0.2.1', 'exits': [
@@ -124,6 +132,15 @@ AllowedIPs = 0.0.0.0/0
                 desired, bundles = u.build_hub(topology, host.configs(), host.keypair)
                 plan_dir = root/'plan'
                 u.save_plan(host, 'hub', desired, plan_dir, bundles)
+                fail_before_cutover[0] = True
+                try:
+                    u.apply(plan_dir/'plan.json', 300)
+                    raise AssertionError('Expected pre-cutover failure')
+                except RuntimeError as exc:
+                    assert 'Injected' in str(exc)
+                assert (volume/'wg0.conf').read_text() == old
+                assert net('ip', '-N', '-j', '-4', 'rule', 'show').stdout == original_rules
+                print('PASS pre-cutover failure resumes services without rewriting live interfaces', flush=True)
                 u.apply(plan_dir/'plan.json', 300)
                 assert set(net('wg', 'show', 'interfaces').stdout.split()) == {'wg0', 'wg-exit-a'}
                 assert net('wg', 'show', 'wg0', 'peers').stdout.strip() == keys[1][1]
@@ -133,10 +150,20 @@ AllowedIPs = 0.0.0.0/0
                 assert not any(str(r.get('table')) == '51820' for r in rules)
                 route = json.loads(net('ip', '-j', '-4', 'route', 'show', 'table', '201').stdout)
                 assert route[0]['dev'] == 'wan0'
-                backup = next(u.BACKUPS.iterdir())
+                backup = next(u.BACKUPS.glob('*/pending')).parent
                 assert (backup/'pending').exists()
-                assert any(c[0] == 'systemd-run' for c in calls if isinstance(c, tuple))
+                assert any(c[:3] == ('systemctl', 'enable', '--now') for c in calls if isinstance(c, tuple))
+                assert 'Persistent=true' in next(u.SYSTEMD.glob('*.timer')).read_text()
+                enable_index = next(i for i, c in enumerate(calls) if isinstance(c, tuple) and c[:3] == ('systemctl', 'enable', '--now'))
+                stop_index = next(i for i, c in enumerate(calls) if isinstance(c, tuple) and c[:3] == ('systemctl', 'stop', u.SERVICE))
+                assert enable_index < stop_index
+                net('ip', '-4', 'rule', 'add', 'priority', '20000', 'to', '203.0.113.0/24', 'table', '77')
                 u.rollback(backup)
+                rows = json.loads(net('ip', '-N', '-j', '-4', 'rule', 'show').stdout)
+                assert any(str(r.get('table')) == '77' for r in rows), rows
+                net('ip', '-4', 'rule', 'del', 'priority', '20000', 'to', '203.0.113.0/24', 'table', '77')
+                restored = json.loads(net('ip', '-N', '-j', '-4', 'route', 'show', 'table', '201').stdout)
+                assert restored[0]['dev'] == 'wan0'
                 assert (volume/'wg0.conf').read_text() == old
                 assert set(net('wg', 'show', 'interfaces').stdout.split()) == {'wg0'}
                 assert net('ip', '-N', '-j', '-4', 'rule', 'show').stdout == original_rules

@@ -11,7 +11,7 @@ fi
 
 if [[ "${VMUTILS_SKIP_PACKAGES:-0}" != 1 ]]; then
     sudo apt-get update
-    sudo apt-get install -y python3 iproute2 iptables iputils-ping wireguard-tools util-linux
+    sudo apt-get install -y python3 iproute2 iptables iputils-ping wireguard-tools util-linux ca-certificates
 fi
 sudo install -d -m 755 /usr/local/lib/vmutils/network-failover /etc/vmutils/network-failover
 sudo install -d -m 700 /var/lib/vmutils-network-failover

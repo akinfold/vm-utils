@@ -169,6 +169,18 @@ c.execute("UPDATE nodes SET inactive_since=?", ({clock-604800},)); c.commit()
             assert active() == "wg-exit-a", active()
             assert_source("172.31.1.1")
             print("PASS retired exit recovers and is re-registered automatically", flush=True)
+            # Invalid reloads must send traffic through the existing WAN policy, not strand it.
+            for invalid in ('{invalid', json.dumps({**config, "active_table": 300})):
+                hub_config.write_text(invalid)
+                result = ns("hub", "python3", str(ROOT/"failover.py"), "--config", str(hub_config),
+                            "--state-dir", str(hub_state), "once", check=False)
+                assert result.returncode != 0
+                assert active() == "v0a"
+                assert_source("172.31.0.1")
+                hub_config.write_text(json.dumps(config))
+                for _ in range(3): tick()
+                assert active() == "wg-exit-a"
+            print("PASS invalid configuration and layout edits preserve native WAN fallback", flush=True)
             # Recreated namespace starts with empty owned tables; persisted history is kept.
             ns("hub", "ip", "route", "flush", "table", "201")
             tick()
