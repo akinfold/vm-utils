@@ -1,0 +1,19 @@
+[Unit]
+Description=WireGuard exit selection and routing for vmutils
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/vmutils/network-failover/failover.py run
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+UMask=0077
+# The host supervisor enters only the current agent container's network namespace.
+# Do not use PrivateNetwork: it would prevent access to the Docker-managed namespace.
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

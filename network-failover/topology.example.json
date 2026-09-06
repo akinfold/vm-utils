@@ -1,0 +1,18 @@
+{
+  "hub_endpoint": "hub.example.com",
+  "client_interface": "wg0",
+  "exits": [
+    {
+      "name": "a",
+      "public_key": "REPLACE_WITH_EXISTING_EXIT_PUBLIC_KEY",
+      "transit": "10.250.1.0/30",
+      "hub_port": 51821
+    },
+    {
+      "name": "b",
+      "public_key": "REPLACE_WITH_EXISTING_EXIT_PUBLIC_KEY",
+      "transit": "10.250.2.0/30",
+      "hub_port": 51822
+    }
+  ]
+}

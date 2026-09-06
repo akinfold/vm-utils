@@ -4,6 +4,14 @@
 # https://www.gnu.org/savannah-checkouts/gnu/bash/manual/bash.html#The-Set-Builtin
 set -e 
 
+# Upgrade an existing node without repeating enrollment or controller initialization.
+if [[ "${1:-}" == --upgrade ]]; then
+    shift
+    TASK_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+    exec bash "$TASK_DIR/../network-failover/upgrade.sh" "$@"
+fi
+
+
 . "../env.sh"
 
 # Check docker already installed
@@ -144,3 +152,6 @@ sudo docker compose -f $DOCKER_COMPOSE_MASTER_FILE -p vmutils up -d --remove-orp
 echo ""
 echo "Open https://$TRAEFIK_HOSTNAME/signup in browser to access Pro Custodibus and create new organization."
 echo "Use your signup key \"$PROCUSTODIBUS_SIGNUP_KEY\" to finish setup."
+
+# Install hub routing automation; the service waits until the agent is enrolled.
+( cd ../network-failover && bash install.sh hub )

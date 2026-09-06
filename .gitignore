@@ -1,2 +1,6 @@
 passwordfile.txt
 upload.sh
+
+# Python verification artifacts
+__pycache__/
+*.py[cod]

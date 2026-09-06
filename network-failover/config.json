@@ -1,0 +1,32 @@
+{
+  "role": "hub",
+  "container": "procustodibus-agent",
+  "client_interface": "wg0",
+  "exit_prefix": "wg-exit-",
+  "exit_interfaces": ["wg0"],
+  "candidate_table": 200,
+  "active_table": 201,
+  "probe_table_base": 10000,
+  "policy_priority": 20000,
+  "interval_seconds": 5,
+  "failure_threshold": 3,
+  "recovery_threshold": 3,
+  "retire_after_seconds": 604800,
+  "retired_probe_seconds": 300,
+  "history_seconds": 604800,
+  "sample_seconds": 30,
+  "score_mode": "weighted",
+  "half_life_seconds": 21600,
+  "minimum_samples": 20,
+  "switch_margin_fraction": 0.2,
+  "switch_margin_ms": 5,
+  "switch_hold_seconds": 300,
+  "minimum_dwell_seconds": 900,
+  "recent_loss_limit": 0.2,
+  "probe_timeout_seconds": 2,
+  "internet_targets": [
+    {"ip": "1.1.1.1", "port": 443, "server_name": "cloudflare-dns.com"},
+    {"ip": "8.8.8.8", "port": 443, "server_name": "dns.google"}
+  ],
+  "internet_quorum": 1
+}

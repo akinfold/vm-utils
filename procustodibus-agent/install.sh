@@ -4,7 +4,34 @@
 # https://www.gnu.org/savannah-checkouts/gnu/bash/manual/bash.html#The-Set-Builtin
 set -e 
 
+# Upgrade an existing node without repeating enrollment or controller initialization.
+if [[ "${1:-}" == --upgrade ]]; then
+    shift
+    TASK_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+    exec bash "$TASK_DIR/../network-failover/upgrade.sh" "$@"
+fi
+
+
 . "../env.sh"
+
+# Controller installation already selects hub mode. Other nodes choose a role once.
+NETWORK_ROLE=${1:-}
+NETWORK_CONFIG="$ROOT_PATH/network-failover/config.json"
+if sudo test -f "$NETWORK_CONFIG"; then
+    EXISTING_NETWORK_ROLE=$(sudo python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["role"])' "$NETWORK_CONFIG")
+    if [[ -n "$NETWORK_ROLE" && "$NETWORK_ROLE" != "$EXISTING_NETWORK_ROLE" ]]; then
+        echo "Existing network role differs; migrate the node explicitly before reinstalling." >&2
+        exit 2
+    fi
+    NETWORK_ROLE=$EXISTING_NETWORK_ROLE
+fi
+if [[ -z "$NETWORK_ROLE" ]]; then
+    read -r -p "Network role [exit/client]: " NETWORK_ROLE
+fi
+case "$NETWORK_ROLE" in
+    hub|exit|client) ;;
+    *) echo "Usage: bash install.sh [hub|exit|client]" >&2; exit 2 ;;
+esac
 
 # Check docker already installed.
 if ! type docker > /dev/null 2>&1; then
@@ -97,3 +124,7 @@ echo ""
 echo "Now you have Pro Custodibus Agent installed and running."
 echo "You can create up to 10 wireguard interfaces on ports within range 51820-51829."
 echo ""
+# Exit NAT and reverse routing are reconciled automatically from WireGuard peers.
+if [[ "$NETWORK_ROLE" != client ]]; then
+    ( cd ../network-failover && bash install.sh "$NETWORK_ROLE" )
+fi
